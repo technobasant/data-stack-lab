@@ -12,7 +12,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
-pytest.importorskip("airflow")
+# `airflow` alone resolves to this repository's airflow/ folder, as a namespace package,
+# when Airflow is not installed; only the real package has `airflow.sdk`.
+pytest.importorskip("airflow.sdk")
 
 
 @pytest.fixture(scope="module")

@@ -107,3 +107,24 @@ jobs:
         run: uv run pytest -q tests/test_dags.py
       - name: Backfill September three ways; the published figures, exactly
         run: uv run python airflow/backfill.py --check
+
+  # The data-quality project: a month of deliveries with nine injected defects, checked in
+  # dbt under two policies (block, quarantine), every row scored against what the defect
+  # did to it. Exact figures checked.
+  quality:
+    name: Data quality, nine defects
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync --locked
+      - name: Generate the dataset
+        run: uv run python -m datagen --scale lab --seed 7 --out data
+      - name: Deliver, check and score September under both policies; the published figures, exactly
+        run: uv run python quality/run.py --check

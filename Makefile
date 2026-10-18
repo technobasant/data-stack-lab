@@ -7,7 +7,8 @@
 #   make mutants     break the models four ways; every break must fail the build
 #   make docs        dbt docs (catalog + lineage) under dbt/target
 #   make all         data, warehouse, measure --check, mutants  (what CI runs)
-#   make airflow     backfill September through the Airflow DAGs three ways and score it
+#   make airflow     backfill September through the Airflow DAGs four ways and score it
+#   make quality     deliver September with nine defects, check it in dbt, score both policies
 #   make check       ruff + generator tests
 #
 # DBT="uvx --from dbt-oss==2.0.8 dbt" make warehouse   runs the same project on dbt v2.
@@ -16,7 +17,7 @@ SHELL := /usr/bin/env bash
 SCALE ?= lab
 SEED ?= 7
 
-.PHONY: setup data warehouse measure mutants docs all airflow check clean
+.PHONY: setup data warehouse measure mutants docs all airflow quality check clean
 
 setup:
 	uv sync
@@ -43,6 +44,9 @@ all: data warehouse
 airflow:
 	uv sync --group airflow
 	uv run python airflow/backfill.py
+
+quality:
+	uv run python quality/run.py
 
 check:
 	uv run ruff check .

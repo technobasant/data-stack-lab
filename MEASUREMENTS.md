@@ -239,3 +239,72 @@ The late file is withheld whole and delivered whole. The backwards order is the
 in-order backfill was run. Event lateness comes from the generator's rates (2.2% late
 by 1–72 hours, 0.3% by 3–10 days), so the event-time losses scale with them.
 
+
+## Data quality: nine defects, two policies
+
+Source: [`results/quality.json`](results/quality.json), written by
+[`quality/run.py`](quality/run.py); CI re-runs it from a fresh dataset and fails on any
+difference. Runs were made on 2026-10-18.
+
+**Deliveries.** Each day's events are the landing partition for that day of arrival (the
+same split as the Airflow project). August is delivered clean and accepted, to give the
+batch checks seven days of history. Each day of September is then delivered with its
+defect applied: rows chosen for a defect are every 20th (nulls), 33rd (new event type)
+or 50th (orphan accounts) by event id, or every third for the late third. Every delivered
+row carries a label: bad if the defect made it wrong (a null key, a shifted timestamp, an
+unknown account), good otherwise. Rows a defect removed (the truncated upload, the
+silent platform, the late third) are counted separately as never delivered.
+
+**Checks** ([`dbt/models/quality/`](dbt/models/quality),
+[`dbt/tests/generic/quality_checks.sql`](dbt/tests/generic/quality_checks.sql)). The
+batch model selects named columns under an enforced contract and deduplicates (first
+delivery wins; events accepted on earlier days are dropped). Row-level tests: not null on
+`event_id`, `account_id` and `event_at`; unique `event_id`; `account_id` in the accounts
+table; `event_type` and `platform` in their allowed sets; `event_at` no more than five
+minutes after `received_at`. Batch-level tests: volume within 30% of the median of the
+last seven accepted days; each platform's share within 0.08 of its share over those
+days; rows per file equal to the producer's manifest, counted before deduplication. A
+warning, not a failure, when redeliveries exceed 5% of the day.
+
+**Policies.** Block holds the whole day on any failure. Quarantine sets aside the rows a
+failed row-level test selects and promotes the rest; a contract or batch-level failure
+still holds the day. A held day is not promoted; the harness does not model a person
+fixing it.
+
+| Day | Defect | Failed checks | Block | Quarantine |
+|---|---|---|---|---|
+| 3 Sep | file delivered twice (6,274 raw rows, 3,113 new events) | none; redelivery warning | promoted | promoted |
+| 6 Sep | 147 of 2,963 events with no account | `not_null` (account_id) | held | 147 quarantined |
+| 9 Sep | `event_type` renamed | the contract (model build failed) | held | held |
+| 12 Sep | 1,709 rows cut from the upload | `matches_manifest`, `volume_near_baseline` | held | held |
+| 15 Sep | all 2,992 event times shifted +5 h | `happened_before_arrival` | held | 2,905 quarantined, 87 promoted |
+| 18 Sep | 92 events of a new, legitimate type | `accepted_values` (event_type) | held | 92 quarantined |
+| 21 Sep | 613 iOS events never sent | `platform_share_near_baseline` | held | held |
+| 24 Sep | 59 events with an unknown account | `relationships` | held | 59 quarantined |
+| 27 Sep | 1,040 events withheld until the 29th | block: none; quarantine: `volume_near_baseline` | promoted | held |
+| 29 Sep | the 1,040 arrive with the day's own events | `volume_near_baseline` | held | held |
+
+| | Block | Quarantine |
+|---|---:|---:|
+| Bad rows delivered | 3,198 | 3,198 |
+| Bad rows promoted | 0 | 87 |
+| Good rows not promoted | 19,545 | 12,865 |
+| Rows never delivered | 3,362 | 3,362 |
+| Days held | 8 | 5 |
+| Clean days (20) with a failure or a warning | 0 | 0 |
+
+Notes on the figures:
+
+- The 87 bad rows promoted under quarantine are timestamp-shifted events that had
+  already arrived more than five hours after they happened, so the shift did not put
+  them after their arrival.
+- On 27 September the delivered count was 2,092. Under block the median of the last
+  seven accepted days was 2,972 (29.6% above it, inside the 30% band); under quarantine,
+  which had accepted 18 and 24 September, it was 2,997 (30.2%, outside). The difference
+  is which earlier days each policy had promoted.
+- 29 September is counted as the late defect's consequence, not as a clean day.
+
+**Limits.** Synthetic events with no weekly or seasonal pattern, so the volume and share
+bands see an unusually flat baseline and the false-alarm count (0 of 20) is optimistic.
+One defect per day, each applied whole. The harness does not model a person repairing
+and re-releasing a held day.

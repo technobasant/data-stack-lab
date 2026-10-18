@@ -1,6 +1,6 @@
 # data-stack-lab
 
-Hands-on data engineering projects, one per tool: dbt and Airflow so far; data quality, Databricks, Snowflake, Spark, Kafka, AWS and BigQuery next.
+Hands-on data engineering projects, one per tool: dbt, Airflow and data quality so far; Databricks, Snowflake, Spark, Kafka, AWS and BigQuery next.
 
 [![ci](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml)
 
@@ -12,6 +12,7 @@ Every project uses the same synthetic SaaS data, runs with one command, and has 
 |---|---|---|
 | [`dbt/`](dbt) | A Kimball star schema: a Type 2 account dimension from dbt snapshots, invoice and daily-usage facts, enforced contracts, 46 data tests and 3 unit tests. Runs unchanged on dbt Core 1.12 and dbt v2. | Attributing revenue by each account's *current* plan (Type 1) put **15.1%** of a year's revenue on the wrong plan, including $10,700 on the free plan. The Type 2 dimension put 5,048 of 5,048 invoices on the plan they billed. |
 | [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table checked. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
+| [`quality/`](quality) | A month of daily deliveries with nine realistic defects (a duplicate file, nulls, a renamed column, a truncated upload, local time labelled UTC, a new event type, a silent platform, orphan keys, a late third), checked in dbt by contract, row tests, batch tests and control totals, under a block and a quarantine policy. | Blocking let **0 of 3,198** bad rows through and held 19,545 good ones; quarantine let 87 through and held 12,865. The three losses that left no bad rows (3,362 rows never delivered) were caught only by control totals, volume and per-platform share. |
 
 ## The data
 
@@ -40,9 +41,10 @@ make docs      # dbt docs with the lineage graph, under dbt/target
 
 DBT="uvx --from dbt-oss==2.0.8 dbt" make all    # the same project on dbt v2
 make airflow   # the Airflow project: September backfilled four ways through the DAGs
+make quality   # the data-quality project: September delivered with nine defects, two policies
 ```
 
-`make all` is what CI runs for the dbt project on both dbt engines, and `make airflow` what it runs for the Airflow project. Each takes a few minutes.
+`make all` is what CI runs for the dbt project on both dbt engines; `make airflow` and `make quality` are what it runs for the other two. Each takes a few minutes.
 
 ## Results: dimensional modelling in dbt
 
@@ -101,6 +103,24 @@ One DAG lands a day of event files and runs three incremental models: one takes 
 
 A high-water mark remembers how far it got, not what it has seen, so any day processed after a later one is skipped, and nothing fails. Loading by the data interval is right in every order, but in Airflow 3 `@daily` became a `CronTriggerTimetable` whose interval starts and ends at the same instant: an empty window, thirty times, with nothing marked failed. `saas_daily` asks for `CronDataIntervalTimetable` explicitly, and a test pins both schedules. The in-order backfill was also run on a real scheduler (`airflow standalone`, `airflow backfill create`), and its tables matched the harness exactly.
 
+## Results: data quality
+
+Figures from [`results/quality.json`](results/quality.json); the method is in [MEASUREMENTS.md](MEASUREMENTS.md#data-quality-nine-defects-two-policies) and the project in [`quality/`](quality).
+
+| Defect | Caught by | Block | Quarantine |
+|---|---|---|---|
+| duplicate file | nothing failed; deduplication absorbed it, and a redelivery warning fired | promoted | promoted |
+| 5% nulls in a key | `not_null` | held | 147 rows quarantined |
+| renamed column | the enforced contract | held | held |
+| upload stopped at 40% | manifest, volume | held | held |
+| local time labelled UTC | event after arrival | held | quarantined; **87 bad rows promoted** |
+| a new, legitimate event type | `accepted_values` | held | **92 good rows quarantined** |
+| a platform goes silent | per-platform share (volume moved 19%, inside the band) | held | held |
+| 2% orphan keys | `relationships` | held | 59 rows quarantined |
+| a third arrives two days late | volume, in one run of two | **promoted** | held |
+
+No check fired on any of the 20 clean days. Missing data and wrong data need different checks, a fixed volume band is a coin toss at its edge, and no rule can tell a defect from a product change.
+
 ## Decisions
 
 - **Snapshot the source, not a staging model.** The snapshot is the only record of history, so it keeps exactly what arrived. Cleaning happens downstream, where it can be changed and rebuilt.
@@ -118,6 +138,7 @@ A high-water mark remembers how far it got, not what it has seen, so any day pro
 datagen/            the seeded generator shared by every project
 dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow project
 airflow/            the DAGs and the backfill harness
+quality/            the data-quality harness; dbt/models/quality holds the checks
 scripts/            warehouse.py (load + replay + build), measure.py, mutants.py
 results/            published measurements; CI checks them
 tests/              the generator's rules (pytest)

@@ -1,0 +1,72 @@
+version: 2
+
+sources:
+  - name: delivery
+    description: One day's event files as delivered, with the producer's manifest for each file.
+    schema: raw
+    tables:
+      - name: events
+        identifier: events_delivered
+      - name: manifests
+        identifier: delivery_manifests
+  - name: reference
+    schema: raw
+    tables:
+      - name: accounts
+  - name: accepted
+    description: What earlier days promoted, kept by the harness; the baseline for batch checks.
+    schema: quality_state
+    tables:
+      - name: events
+        identifier: accepted_events
+      - name: daily
+        identifier: accepted_daily
+
+models:
+  - name: stg_quality__batch
+    description: >
+      The day's delivered events, with the columns the contract names. A delivery that
+      renamed or dropped one fails here, before any other check runs.
+    config:
+      contract: {enforced: true}
+    data_tests:
+      # Batch-level checks: the day as a whole against what was accepted before it.
+      - volume_near_baseline:
+          arguments: {tolerance: 0.30, days: 7}
+      - platform_share_near_baseline:
+          arguments: {tolerance: 0.08, days: 7}
+      - matches_manifest
+      # A spike in redeliveries is worth a look, not a stop: deduplication already made it harmless.
+      - redeliveries_below:
+          arguments: {max_share: 0.05}
+          config: {severity: warn}
+    columns:
+      - name: event_id
+        data_type: varchar
+        data_tests: [not_null, unique]
+      - name: user_id
+        data_type: bigint
+      - name: account_id
+        data_type: bigint
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "source('reference', 'accounts')", field: account_id}
+      - name: event_type
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [login, view_dashboard, create_report, share_report, export_csv, invite_user, api_call]
+      - name: platform
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments: {values: [web, ios, android]}
+      - name: event_at
+        data_type: timestamp
+        data_tests: [not_null, happened_before_arrival]
+      - name: received_at
+        data_type: timestamp
+      - name: file_name
+        data_type: varchar

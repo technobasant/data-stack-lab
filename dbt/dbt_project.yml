@@ -1,0 +1,26 @@
+name: saas
+version: "1.0.0"
+config-version: 2
+profile: saas
+
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+models:
+  saas:
+    staging:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts
+
+snapshots:
+  saas:
+    +schema: snapshots
+
+data_tests:
+  saas:
+    +severity: error

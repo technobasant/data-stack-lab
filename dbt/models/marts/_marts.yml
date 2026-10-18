@@ -1,0 +1,202 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: One row per day, 2023-01-01 to 2026-12-31.
+    columns:
+      - name: date_key
+        data_tests: [unique, not_null]
+
+  - name: dim_plan
+    columns:
+      - name: plan_id
+        data_tests: [unique, not_null]
+      - name: plan_name
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [free, team, business, enterprise]
+
+  - name: dim_account
+    description: >
+      Accounts as a Type 2 slowly changing dimension: one row per version, valid over
+      [valid_from, valid_to). Facts join to the version that was in effect when they
+      happened, so history keeps the plan, country and status it actually had.
+    config:
+      contract: {enforced: true}
+    data_tests:
+      - valid_windows_do_not_overlap:
+          arguments: {entity: account_id, valid_from: valid_from, valid_to: valid_to}
+      - valid_windows_are_contiguous:
+          arguments: {entity: account_id, valid_from: valid_from, valid_to: valid_to}
+    columns:
+      - name: account_key
+        description: Surrogate key of the version (the snapshot's dbt_scd_id).
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: account_id
+        description: The application's key; shared by every version of an account.
+        data_type: bigint
+        data_tests:
+          - not_null
+          - unique:
+              config: {where: "is_current"}
+      - name: version_number
+        data_type: integer
+      - name: account_name
+        data_type: varchar
+      - name: industry
+        data_type: varchar
+      - name: country
+        data_type: varchar
+      - name: plan_id
+        data_type: bigint
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_plan'), field: plan_id}
+      - name: plan_name
+        data_type: varchar
+      - name: status
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [active, churned]
+      - name: signup_at
+        data_type: timestamp
+      - name: valid_from
+        data_type: timestamp
+        data_tests: [not_null]
+      - name: valid_to
+        description: Exclusive. 9999-12-31 for the current version.
+        data_type: timestamp
+        data_tests: [not_null]
+      - name: is_current
+        data_type: boolean
+
+  - name: dim_user
+    description: Users, Type 1. Personal data stays in staging; the mart keeps the e-mail domain.
+    columns:
+      - name: user_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests: [not_null]
+
+  - name: fct_invoices
+    description: One row per invoice, on the account version in effect when it was billed.
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: invoice_id
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: account_key
+        data_type: varchar
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_account'), field: account_key}
+      - name: account_id
+        data_type: bigint
+      - name: invoice_date_key
+        data_type: integer
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: invoiced_at
+        data_type: timestamp
+      - name: amount_usd
+        data_type: decimal(10, 2)
+        data_tests: [not_null]
+
+  - name: fct_daily_usage
+    description: One row per account version and day of activity.
+    config:
+      contract: {enforced: true}
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [account_key, activity_date]
+    columns:
+      - name: account_key
+        data_type: varchar
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_account'), field: account_key}
+      - name: account_id
+        data_type: bigint
+      - name: date_key
+        data_type: integer
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: activity_date
+        data_type: date
+      - name: events
+        data_type: bigint
+      - name: active_users
+        data_type: bigint
+      - name: reports_created
+        data_type: bigint
+      - name: exports
+        data_type: bigint
+
+  - name: revenue_by_plan
+    description: >
+      Monthly revenue by the plan billed (Type 2) next to the plan each account is on
+      today (Type 1). The gap between the two is what a Type 1 dimension gets wrong.
+    columns:
+      - name: billed_plan
+        data_tests: [not_null]
+      - name: current_plan
+        data_tests: [not_null]
+
+unit_tests:
+  - name: first_version_reaches_back_to_signup
+    description: >
+      An account that changed plan before its first extract is first seen with
+      updated_at after signup; its first version must still start at signup, and the
+      open version must end at 9999-12-31.
+    model: dim_account
+    given:
+      - input: ref('snap_accounts')
+        rows:
+          - {dbt_scd_id: v1, account_id: 7, account_name: Kite Labs, industry: media, country: NP, plan_id: 2, status: active, signup_at: "2025-03-01 09:00:00", dbt_valid_from: "2025-06-10 12:00:00", dbt_valid_to: "2026-02-14 08:00:00"}
+          - {dbt_scd_id: v2, account_id: 7, account_name: Kite Labs, industry: media, country: NP, plan_id: 3, status: active, signup_at: "2025-03-01 09:00:00", dbt_valid_from: "2026-02-14 08:00:00", dbt_valid_to: null}
+      - input: ref('dim_plan')
+        rows:
+          - {plan_id: 2, plan_name: team}
+          - {plan_id: 3, plan_name: business}
+    expect:
+      rows:
+        - {account_key: v1, version_number: 1, plan_name: team, valid_from: "2025-03-01 09:00:00", valid_to: "2026-02-14 08:00:00", is_current: false}
+        - {account_key: v2, version_number: 2, plan_name: business, valid_from: "2026-02-14 08:00:00", valid_to: "9999-12-31 00:00:00", is_current: true}
+
+  - name: an_invoice_takes_the_version_in_effect_when_billed
+    description: >
+      Billed on 1 March, the invoice belongs to the version that started on 14 February,
+      not to the one that ended then or to a later one.
+    model: fct_invoices
+    given:
+      - input: ref('stg_billing__invoices')
+        rows:
+          - {invoice_id: INV-1, account_id: 7, invoiced_at: "2026-02-01 00:00:00", amount_usd: 49}
+          - {invoice_id: INV-2, account_id: 7, invoiced_at: "2026-03-01 00:00:00", amount_usd: 199}
+      - input: ref('dim_account')
+        rows:
+          - {account_key: v1, account_id: 7, valid_from: "2025-03-01 09:00:00", valid_to: "2026-02-14 08:00:00"}
+          - {account_key: v2, account_id: 7, valid_from: "2026-02-14 08:00:00", valid_to: "2026-05-02 10:00:00"}
+          - {account_key: v3, account_id: 7, valid_from: "2026-05-02 10:00:00", valid_to: "9999-12-31 00:00:00"}
+    expect:
+      rows:
+        - {invoice_id: INV-1, account_key: v1, invoice_date_key: 20260201}
+        - {invoice_id: INV-2, account_key: v2, invoice_date_key: 20260301}
+
+exposures:
+  - name: revenue_by_plan_report
+    type: analysis
+    description: The monthly revenue-by-plan report that finance reads.
+    owner: {name: Basant Bhattarai}
+    depends_on:
+      - ref('revenue_by_plan')

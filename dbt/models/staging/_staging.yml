@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_app__plans
+    columns:
+      - name: plan_id
+        data_tests: [unique, not_null]
+  - name: stg_app__users
+    description: Users with e-mail normalised (some were typed in capitals with a trailing space).
+    columns:
+      - name: user_id
+        data_tests: [unique, not_null]
+      - name: email
+        data_tests: [unique, not_null]
+  - name: stg_billing__invoices
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]
+      - name: amount_usd
+        data_tests: [not_null]
+  - name: stg_tracking__events
+    description: One row per event; the first delivery of each event_id.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: a_redelivered_event_counts_once
+    description: The same event_id delivered twice keeps the first delivery only.
+    model: stg_tracking__events
+    given:
+      - input: source('tracking', 'events')
+        rows:
+          - {event_id: e1, user_id: 1, account_id: 1, event_type: login, platform: web, event_at: "2026-01-05 10:00:00", received_at: "2026-01-05 10:00:04"}
+          - {event_id: e1, user_id: 1, account_id: 1, event_type: login, platform: web, event_at: "2026-01-05 10:00:00", received_at: "2026-01-05 11:30:00"}
+          - {event_id: e2, user_id: 2, account_id: 1, event_type: export_csv, platform: ios, event_at: "2026-01-05 12:00:00", received_at: "2026-01-07 09:00:00"}
+    expect:
+      rows:
+        - {event_id: e1, received_at: "2026-01-05 10:00:04"}
+        - {event_id: e2, received_at: "2026-01-07 09:00:00"}

@@ -1,0 +1,22 @@
+# Weekly, grouped updates. The three-day cooldown matches the exclude-newer guard in
+# pyproject.toml: nothing younger than three days is proposed.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    groups:
+      python:
+        patterns: ["*"]

@@ -1,0 +1,36 @@
+[
+  {
+    "mutant": "invoices joined to today's version (Type 1)",
+    "unit_tests_failing": [
+      "an_invoice_takes_the_version_in_effect_when_billed"
+    ],
+    "data_tests_failing": []
+  },
+  {
+    "mutant": "first version dated from the snapshot, not signup",
+    "unit_tests_failing": [
+      "first_version_reaches_back_to_signup"
+    ],
+    "data_tests_failing": [
+      "not_null_fct_daily_usage_account_key"
+    ]
+  },
+  {
+    "mutant": "open version left with a NULL end",
+    "unit_tests_failing": [
+      "first_version_reaches_back_to_signup"
+    ],
+    "data_tests_failing": [
+      "not_null_dim_account_valid_to"
+    ]
+  },
+  {
+    "mutant": "redelivered events not deduplicated",
+    "unit_tests_failing": [
+      "a_redelivered_event_counts_once"
+    ],
+    "data_tests_failing": [
+      "unique_stg_tracking__events_event_id"
+    ]
+  }
+]

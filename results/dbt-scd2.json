@@ -1,0 +1,69 @@
+{
+  "dataset": {
+    "scale": "lab",
+    "seed": 7
+  },
+  "model": {
+    "accounts": 1000,
+    "account_versions": 1521,
+    "versions_same_as_previous": 33
+  },
+  "revenue": {
+    "invoices": 5048,
+    "revenue_usd": 1010202.0,
+    "type2_invoices_right": 5048,
+    "type1_invoices_right": 4175,
+    "type2_usd_on_wrong_plan": 0.0,
+    "type1_usd_on_wrong_plan": 152227.0,
+    "type1_share_on_wrong_plan": 0.1507,
+    "by_plan": [
+      {
+        "plan": "free",
+        "true_usd": 0.0,
+        "type2_usd": 0.0,
+        "type1_usd": 10700.0,
+        "type1_vs_true": null
+      },
+      {
+        "plan": "team",
+        "true_usd": 140581.0,
+        "type2_usd": 140581.0,
+        "type1_usd": 157008.0,
+        "type1_vs_true": 0.1169
+      },
+      {
+        "plan": "business",
+        "true_usd": 325166.0,
+        "type2_usd": 325166.0,
+        "type1_usd": 340030.0,
+        "type1_vs_true": 0.0457
+      },
+      {
+        "plan": "enterprise",
+        "true_usd": 544455.0,
+        "type2_usd": 544455.0,
+        "type1_usd": 502464.0,
+        "type1_vs_true": -0.0771
+      }
+    ]
+  },
+  "snapshot_coverage": {
+    "changes": 570,
+    "seen": 533,
+    "trial_endings": 48,
+    "trial_endings_seen": 47,
+    "seen_share": 0.9351
+  },
+  "usage": {
+    "events": 906015,
+    "type2_events_wrong": 734,
+    "type1_events_wrong": 123627,
+    "type2_share_wrong": 0.0008,
+    "type1_share_wrong": 0.1365
+  },
+  "events": {
+    "delivered": 913388,
+    "unique": 906015,
+    "duplicate_share": 0.0081
+  }
+}

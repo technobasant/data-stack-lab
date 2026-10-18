@@ -1,0 +1,11 @@
+# Targets for the same project. Only duckdb runs in CI; the others are filled in by the
+# modules that need them (snowflake/, databricks/, bigquery/).
+saas:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      # Relative to where dbt runs (this directory). The scripts always run it here.
+      path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
+      schema: main
+      threads: 4

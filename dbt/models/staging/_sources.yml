@@ -1,0 +1,37 @@
+version: 2
+
+sources:
+  - name: app
+    description: Tables extracted from the product's application database.
+    schema: raw
+    tables:
+      - name: accounts
+        description: >
+          A full extract of the accounts table, replaced on every load. It holds the
+          current state only: the warehouse knows an account's history because the
+          `snap_accounts` snapshot records each extract.
+        columns:
+          - name: account_id
+            data_tests: [unique, not_null]
+          - name: updated_at
+            description: When the row last changed in the application. The snapshot keys on it.
+            data_tests: [not_null]
+      - name: users
+        description: People in each account. Holds personal data (name, e-mail).
+      - name: plans
+        description: The price list.
+
+  - name: billing
+    description: The billing system's export. It carries money, not the plan billed.
+    schema: raw
+    tables:
+      - name: invoices
+
+  - name: tracking
+    description: Product usage events.
+    schema: raw
+    tables:
+      - name: events
+        description: Delivered at least once, so the same event_id can arrive twice.
+        config:
+          loaded_at_field: received_at

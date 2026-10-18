@@ -1,0 +1,13 @@
+snapshots:
+  - name: snap_accounts
+    relation: source('app', 'accounts')
+    description: >
+      Every version of every account the extracts have shown. The timestamp strategy
+      starts a new version whenever `updated_at` moves, and dates it from `updated_at`,
+      so a version's validity is the application's own change time, not the time the
+      snapshot ran. A change that is made and undone between two extracts is never
+      seen.
+    config:
+      unique_key: account_id
+      strategy: timestamp
+      updated_at: updated_at

@@ -1,0 +1,33 @@
+[project]
+name = "data-stack-lab"
+version = "0.1.0"
+description = "One synthetic SaaS business, modelled and run on the tools data teams hire for — each module small, runnable and measured."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Basant Bhattarai" }]
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb>=1.5,<2",
+    "numpy>=2.0",
+    "pyarrow>=20",
+    "dbt-core>=1.12,<1.13",
+    "dbt-duckdb>=1.11,<1.12",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.14"]
+
+[tool.uv]
+package = false
+exclude-newer = "3 days"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

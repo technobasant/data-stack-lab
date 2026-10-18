@@ -1,23 +1,23 @@
 # data-stack-lab
 
-One synthetic SaaS business, built on the tools data teams hire for: dbt first, then the orchestration, quality, warehouse and lakehouse platforms. Each module is small, runs from one command, and ends in a figure scored against the data's ground truth.
+Hands-on data engineering projects, one per tool: dbt and Airflow so far; data quality, Databricks, Snowflake, Spark, Kafka, AWS and BigQuery next.
 
 [![ci](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml)
 
-Every module shares one seeded dataset: a B2B subscription product with four plans, accounts that upgrade, downgrade, try a higher plan and drop back, and churn; their users; a year of monthly invoices; and 900,000 product events delivered the way trackers deliver them, some late and some twice. The generator knows what really happened, so a module can be scored, not just run. Nothing in it is real.
+Every project uses the same synthetic SaaS data, runs with one command, and has its results checked in CI.
 
-## Modules
+## Projects
 
-| Module | What it builds | What it measured |
+| Project | What it builds | Result |
 |---|---|---|
 | [`dbt/`](dbt) | A Kimball star schema: a Type 2 account dimension from dbt snapshots, invoice and daily-usage facts, enforced contracts, 46 data tests and 3 unit tests. Runs unchanged on dbt Core 1.12 and dbt v2. | Attributing revenue by each account's *current* plan (Type 1) put **15.1%** of a year's revenue on the wrong plan, including $10,700 on the free plan. The Type 2 dimension put 5,048 of 5,048 invoices on the plan they billed. |
-| [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table scored. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
+| [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table checked. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
 
-Next, on the same data: data quality checks, Databricks, Snowflake, Spark, Kafka, AWS and BigQuery.
+## The data
 
-## The dataset
+1,000 accounts on four plans, a year of invoices and 900k product events, including late and duplicate events. Because it is generated, the correct answer is known, so each project can prove its result instead of just running.
 
-[`datagen/saas.py`](datagen/saas.py), seed 7, October 2025 to September 2026. It is generated in about five seconds and is identical on every run.
+[`datagen/saas.py`](datagen/saas.py), seed 7, October 2025 to September 2026: generated in about five seconds, identical on every run, and nothing in it is real.
 
 | Source | Rows | As delivered |
 |---|---:|---|
@@ -27,7 +27,7 @@ Next, on the same data: data quality checks, Databricks, Snowflake, Spark, Kafka
 | `invoices` | 5,048 | the billing export: account and amount, **not** the plan billed |
 | `events` | 913,388 | 0.8% redelivered with the same `event_id`; 2.9% arrive over an hour late |
 
-The generator also writes what a warehouse never gets: every account change with its timestamp (2,291) and the plan each invoice billed. The measurements score the models against those files.
+The generator also writes what a warehouse never gets: every account change with its timestamp (2,291) and the plan each invoice billed. Each project checks its results against those files.
 
 ## Quick start
 
@@ -39,10 +39,10 @@ make all       # generate the data, build the warehouse, check the published fig
 make docs      # dbt docs with the lineage graph, under dbt/target
 
 DBT="uvx --from dbt-oss==2.0.8 dbt" make all    # the same project on dbt v2
-make airflow   # the Airflow module: September backfilled four ways through the DAGs
+make airflow   # the Airflow project: September backfilled four ways through the DAGs
 ```
 
-`make all` is what CI runs on both dbt engines, and `make airflow` what its Airflow job runs. Each takes a few minutes.
+`make all` is what CI runs for the dbt project on both dbt engines, and `make airflow` what it runs for the Airflow project. Each takes a few minutes.
 
 ## Results: dimensional modelling in dbt
 
@@ -88,7 +88,7 @@ dbt v2 (the Rust engine, `dbt-oss` 2.0.8, Apache-2.0) ran the project after one 
 
 ## Results: incremental loads and backfills in Airflow
 
-Figures from [`results/airflow-backfill.json`](results/airflow-backfill.json); the method is in [MEASUREMENTS.md](MEASUREMENTS.md#airflow-incremental-loads-and-backfills) and the module in [`airflow/`](airflow).
+Figures from [`results/airflow-backfill.json`](results/airflow-backfill.json); the method is in [MEASUREMENTS.md](MEASUREMENTS.md#airflow-incremental-loads-and-backfills) and the project in [`airflow/`](airflow).
 
 One DAG lands a day of event files and runs three incremental models: one takes events newer than the newest event time already loaded, one takes those that arrived after the newest arrival already loaded, and one takes exactly what arrived in the run's data interval. September, 89,508 events, was backfilled four ways:
 
@@ -109,14 +109,14 @@ A high-water mark remembers how far it got, not what it has seen, so any day pro
 - **Open versions end at 9999-12-31, not NULL.** As-of joins become a plain range predicate on every warehouse.
 - **Facts join with a LEFT JOIN plus a `not_null` test on the key.** An unmatched row fails the build instead of disappearing.
 - **No dbt packages.** The three custom generic tests (validity windows that neither overlap nor leave gaps, and a composite grain) take under 50 lines. Without packages the project runs offline and on dbt v2 unchanged.
-- **Portable SQL.** Cross-database macros (`dbt.date_spine`, `dbt.date_trunc`, `dbt.split_part`) and no `QUALIFY`, so the Snowflake, Databricks and BigQuery modules can run this project, not a copy of it.
+- **Portable SQL.** Cross-database macros (`dbt.date_spine`, `dbt.date_trunc`, `dbt.split_part`) and no `QUALIFY`, so the Snowflake, Databricks and BigQuery projects can run this dbt project, not a copy of it.
 - **Personal data stops at staging.** Marts carry the e-mail domain, never the address or the name.
 
 ## Layout
 
 ```
-datagen/            the seeded generator shared by every module
-dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow module
+datagen/            the seeded generator shared by every project
+dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow project
 airflow/            the DAGs and the backfill harness
 scripts/            warehouse.py (load + replay + build), measure.py, mutants.py
 results/            published measurements; CI checks them

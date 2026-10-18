@@ -1,0 +1,13 @@
+{
+  "note": "one run, one machine; not compared",
+  "write_aqe_off_september_s": 386.39,
+  "scan_all_aqe_off_september_s": 11.78,
+  "write_aqe_on_september_s": 4.72,
+  "scan_all_aqe_on_september_s": 0.12,
+  "write_aqe_on_year_s": 78.47,
+  "scan_all_aqe_on_year_s": 3.31,
+  "write_repartitioned_year_s": 23.06,
+  "scan_all_repartitioned_year_s": 1.32,
+  "one_day_query_partitioned_by_day_s": 0.09,
+  "one_day_query_unpartitioned_s": 0.45
+}

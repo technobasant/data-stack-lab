@@ -1,6 +1,6 @@
 # data-stack-lab
 
-Hands-on data engineering projects, one per tool: dbt, Airflow and data quality so far; Databricks, Snowflake, Spark, Kafka, AWS and BigQuery next.
+Hands-on data engineering projects, one per tool: dbt, Airflow, data quality and Spark so far; Databricks, Snowflake, Kafka, AWS and BigQuery next.
 
 [![ci](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml)
 
@@ -13,6 +13,7 @@ Every project uses the same synthetic SaaS data, runs with one command, and has 
 | [`dbt/`](dbt) | A Kimball star schema: a Type 2 account dimension from dbt snapshots, invoice and daily-usage facts, enforced contracts, 46 data tests and 3 unit tests. Runs unchanged on dbt Core 1.12 and dbt v2. | Attributing revenue by each account's *current* plan (Type 1) put **15.1%** of a year's revenue on the wrong plan, including $10,700 on the free plan. The Type 2 dimension put 5,048 of 5,048 invoices on the plan they billed. |
 | [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table checked. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
 | [`quality/`](quality) | A month of daily deliveries with nine realistic defects (a duplicate file, nulls, a renamed column, a truncated upload, local time labelled UTC, a new event type, a silent platform, orphan keys, a late third), checked in dbt by contract, row tests, batch tests and control totals, under a block and a quarantine policy. | Blocking let **0 of 3,198** bad rows through and held 19,545 good ones; quarantine let 87 through and held 12,865. The three losses that left no bad rows (3,362 rows never delivered) were caught only by control totals, volume and per-platform share. |
+| [`spark/`](spark) | A PySpark 4.2 batch job (a daily usage rollup written as Parquet partitioned by day) and three defaults it trips over: re-running one day, the files a partitioned write produces, and partition pruning. | Re-running one day with Spark's default `static` overwrite left **1 of 365** daily partitions; `dynamic` kept all 365. A partitioned write produced 5,970 files for a month with AQE off and 1,460 for the year with AQE on; repartitioning by the partition column gave one file a day. |
 
 ## The data
 
@@ -42,9 +43,10 @@ make docs      # dbt docs with the lineage graph, under dbt/target
 DBT="uvx --from dbt-oss==2.0.8 dbt" make all    # the same project on dbt v2
 make airflow   # the Airflow project: September backfilled four ways through the DAGs
 make quality   # the data-quality project: September delivered with nine defects, two policies
+make spark     # the Spark project: re-running a day, small files, pruning (needs Java 17+)
 ```
 
-`make all` is what CI runs for the dbt project on both dbt engines; `make airflow` and `make quality` are what it runs for the other two. Each takes a few minutes.
+`make all` is what CI runs for the dbt project on both dbt engines; `make airflow`, `make quality` and `make spark` are what it runs for the others. Each takes a few minutes; the Spark run about ten.
 
 ## Results: dimensional modelling in dbt
 
@@ -121,6 +123,19 @@ Figures from [`results/quality.json`](results/quality.json); the method is in [M
 
 No check fired on any of the 20 clean days. Missing data and wrong data need different checks, a fixed volume band is a coin toss at its edge, and no rule can tell a defect from a product change.
 
+## Results: Spark
+
+Counts from [`results/spark.json`](results/spark.json); the method is in [MEASUREMENTS.md](MEASUREMENTS.md#pyspark-re-running-a-day-small-files-pruning) and the project in [`spark/`](spark).
+
+| Experiment | Result |
+|---|---|
+| Re-run one day with `mode("overwrite")`, default `static` | **1 of 365** partitions left; 333,082 rows became 1,070 |
+| The same, `dynamic` | 365 of 365 left |
+| Write a month, AQE off | 5,970 files, up to 200 a day, median 1.5 KB |
+| Write the year, AQE on | 1,460 files, up to 4 a day |
+| Write the year, repartitioned by day | 365 files, one a day |
+| Files holding one day's rows | 1 of 365 partitioned; 199 of 200 unpartitioned |
+
 ## Decisions
 
 - **Snapshot the source, not a staging model.** The snapshot is the only record of history, so it keeps exactly what arrived. Cleaning happens downstream, where it can be changed and rebuilt.
@@ -139,6 +154,7 @@ datagen/            the seeded generator shared by every project
 dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow project
 airflow/            the DAGs and the backfill harness
 quality/            the data-quality harness; dbt/models/quality holds the checks
+spark/              the PySpark job and its three experiments
 scripts/            warehouse.py (load + replay + build), measure.py, mutants.py
 results/            published measurements; CI checks them
 tests/              the generator's rules (pytest)

@@ -9,6 +9,7 @@
 #   make all         data, warehouse, measure --check, mutants  (what CI runs)
 #   make airflow     backfill September through the Airflow DAGs four ways and score it
 #   make quality     deliver September with nine defects, check it in dbt, score both policies
+#   make spark       PySpark: re-running a day, small files, partition pruning (needs Java 17+)
 #   make check       ruff + generator tests
 #
 # DBT="uvx --from dbt-oss==2.0.8 dbt" make warehouse   runs the same project on dbt v2.
@@ -17,7 +18,7 @@ SHELL := /usr/bin/env bash
 SCALE ?= lab
 SEED ?= 7
 
-.PHONY: setup data warehouse measure mutants docs all airflow quality check clean
+.PHONY: setup data warehouse measure mutants docs all airflow quality spark check clean
 
 setup:
 	uv sync
@@ -47,6 +48,10 @@ airflow:
 
 quality:
 	uv run python quality/run.py
+
+spark:
+	uv sync --group spark
+	uv run python spark/run.py
 
 check:
 	uv run ruff check .

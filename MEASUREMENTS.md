@@ -308,3 +308,45 @@ Notes on the figures:
 bands see an unusually flat baseline and the false-alarm count (0 of 20) is optimistic.
 One defect per day, each applied whole. The harness does not model a person repairing
 and re-releasing a held day.
+
+## PySpark: re-running a day, small files, pruning
+
+Source: [`results/spark.json`](results/spark.json), written by
+[`spark/run.py`](spark/run.py); CI re-runs it and fails if a count differs. Times are in
+[`results/spark-observed.json`](results/spark-observed.json): one run on the host above,
+recorded and never compared. Runs were made on 2026-10-18 with PySpark 4.2.0 on Zulu
+OpenJDK 17.0.20, `local[4]`, `spark.sql.shuffle.partitions` = 200, session time zone UTC.
+
+**The job.** Read `raw/events.parquet`, keep the first delivery of each `event_id`, and
+count events and distinct users per `activity_date` (the event's UTC date), `account_id`
+and `event_type`: 333,082 rows over 365 days.
+
+**Re-running one day.** The year is written with `partitionBy("activity_date")`. Then
+15 September (1,070 rows) is recomputed alone and written back with `mode("overwrite")`.
+
+| `partitionOverwriteMode` | Partitions before → after | Rows before → after |
+|---|---|---|
+| `static` (default) | 365 → 1 | 333,082 → 1,070 |
+| `dynamic` | 365 → 365 | 333,082 → 333,082 |
+
+**Files written.** The same rollup, written with `partitionBy("activity_date")`:
+
+| Variant | Days | Files | Max files in a day | Median file | Write (observed) |
+|---|---:|---:|---:|---:|---:|
+| AQE off | 30 (September) | 5,970 | 200 | 1.5 KB | 386 s |
+| AQE on | 30 | 30 | 1 | 5.6 KB | 4.7 s |
+| AQE on | 365 | 1,460 | 4 | 2.8 KB | 78 s |
+| AQE on, `repartition("activity_date")` | 365 | 365 | 1 | 5.0 KB | 23 s |
+
+The AQE-off variant runs on September only: on the year it writes about 73,000 files and
+takes most of an hour. A full scan of the September AQE-off output took 11.8 s against
+0.12 s for the AQE-on output (observed).
+
+**Pruning.** Rows for 15 September in the year's output: partitioned by day (365 files),
+1 file holds them; unpartitioned (written with AQE off, 200 files), 199 files hold them.
+"Holding" is counted with `input_file_name()` over the filtered rows.
+
+**Limits.** One machine, local mode: no network shuffle and no object store, where small
+files cost far more (one request each). The rollup is small, so absolute times are
+seconds; the counts are the result, and they follow from Spark's partitioning rules
+rather than from this machine.

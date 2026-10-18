@@ -16,6 +16,15 @@ models:
     marts:
       +materialized: table
       +schema: marts
+    # The Airflow module's incremental models. Off unless Airflow turns them on, so the
+    # dbt module builds exactly what it always did.
+    airflow:
+      +materialized: incremental
+      +incremental_strategy: delete+insert
+      +unique_key: event_id
+      +schema: airflow
+      +tags: ["airflow"]
+      +enabled: "{{ var('airflow_module', false) }}"
 
 snapshots:
   saas:

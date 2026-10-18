@@ -13,6 +13,7 @@ file under [`results/`](results) that CI regenerates and compares. Runs were mad
 | dbt | dbt Core 1.12.6 with dbt-duckdb 1.11.0; dbt v2 as `dbt-oss` 2.0.8 |
 | Warehouse | DuckDB 1.5.6, one file (`data/warehouse.duckdb`) |
 | Generator | NumPy 2.5.4, PyArrow 26.0.0 |
+| Airflow | Apache Airflow 3.3.2 (the `airflow` dependency group), SQLite metadata database |
 
 Only the timings depend on the host. Every other figure is a count over seeded data
 and is identical on any machine; CI (Ubuntu) reproduces the files byte for byte.
@@ -174,3 +175,67 @@ observation, not a benchmark.
 - So far only DuckDB. The project is written to run on Snowflake, Databricks and
   BigQuery through their adapters; those runs belong to those modules and are not
   claimed here.
+
+## Airflow: incremental loads and backfills
+
+Source: [`results/airflow-backfill.json`](results/airflow-backfill.json), written by
+[`airflow/backfill.py`](airflow/backfill.py); CI re-runs it and fails on any difference.
+Runs were made on 2026-10-18.
+
+**Setup.** The delivered events are split into one landing partition per day of
+arrival. Each scenario starts from its own DuckDB file holding everything that arrived
+before 1 September, loaded in full into the three incremental models
+([`dbt/models/airflow/`](dbt/models/airflow)). It then runs the DAG once per day of
+September through `dag.test()`, which executes the real `land` and `transform` tasks
+in-process; the run for a day is fired at the midnight after it, as the scheduler
+fires it. All three models use `delete+insert` on `event_id` and keep the first
+delivery within a batch, so the only difference between them is the filter that
+chooses the batch.
+
+**Scoring.** The truth is every distinct `event_id` whose first delivery arrived before
+1 October: 89,508 of them arrived in September, 2,291 of those more than an hour after
+they happened. A table's "lost" count is truth events absent from it. No table held a
+duplicate in any scenario.
+
+| Scenario | Runs | `events_by_event_time` | `events_by_arrival` | `events_by_interval` |
+|---|---|---:|---:|---:|
+| `in_order`: 1 → 30 Sep | 30 of 30 succeeded | 2,034 lost (2.27%), all over an hour late | 0 | 0 |
+| `late_file`: the 10 Sep partition is withheld until after the 12th's run; the 10th is then re-run | 30 of 31; the first run for the 10th failed at `land` | 4,841 (5.41%) | 2,889 (3.23%) | 0 |
+| `backwards`: 30 → 1 Sep | 30 of 30 | 86,432 (96.56%) | 86,432 (96.56%) | 0 |
+| `default_cron`: `saas_daily_default_cron`, 1 → 30 Sep | 30 of 30 | 4,919 (5.50%) | 2,996 (3.35%), and 72 rows from 1 Oct | 89,508 (100%) |
+
+What the counts are made of:
+
+- `in_order`, event time: 2,034 of the 2,291 late arrivals. An event is dropped when an
+  event that happened later was loaded first.
+- `late_file`, arrival time: 2,889 of the 2,890 events whose first delivery arrived on
+  10 September. The re-run found its high-water mark already at the 12th. The one it
+  kept was redelivered on the 11th and loaded then.
+- `backwards`: both watermarks kept only 30 September's 3,076 arrivals, the first day
+  processed; every earlier day was below the mark.
+- `default_cron`: `"@daily"` is a `CronTriggerTimetable` in Airflow 3
+  (`[scheduler] create_cron_data_intervals = False`), so each run's data interval
+  starts and ends at the instant it fires. `events_by_interval` loaded nothing in 30
+  successful runs. `land` takes its day from `data_interval_start`, which on this
+  schedule is the day that has just begun, so the run for 1 September loaded 2
+  September's file: the two watermark models never received 1 September's 2,996
+  arrivals, and the last run loaded 72 events that arrived on 1 October.
+
+`tests/test_dags.py` pins both timetables: one-day windows for `saas_daily`, zero-length
+for the default, so a change in Airflow's default fails CI before it changes a result.
+
+**On a real scheduler.** The `in_order` scenario was also run once on `airflow
+standalone` (Airflow 3.3.2, SQLite, LocalExecutor) with `airflow backfill create
+--dag-id saas_daily --from-date 2026-09-01 --to-date 2026-09-30 --max-active-runs 1`.
+All 30 backfill runs succeeded in 3 min 39 s, and all three tables matched the harness
+exactly. Unpausing the DAG also made the scheduler create a run for the latest
+interval, 17 October, which failed at `land` because no file exists for that day.
+Record: [`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json).
+That run is not repeated in CI.
+
+**Limits.** One month, one file per day, no partial files: a file is either there or not.
+The late file is withheld whole and delivered whole. The backwards order is the
+`--run-backwards` order applied to `dag.test()`; on the real scheduler only the
+in-order backfill was run. Event lateness comes from the generator's rates (2.2% late
+by 1–72 hours, 0.3% by 3–10 days), so the event-time losses scale with them.
+

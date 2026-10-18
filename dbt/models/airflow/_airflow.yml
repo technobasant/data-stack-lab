@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: landing
+    description: >
+      Event files as they land, one partition per day of arrival, appended to the
+      warehouse by the Airflow DAG's `land` task.
+    schema: raw
+    tables:
+      - name: events
+        identifier: events_landed
+
+models:
+  - name: events_by_event_time
+    description: >
+      Incremental on event time: each run takes events newer than the newest event
+      already loaded. The common first attempt.
+  - name: events_by_arrival
+    description: >
+      Incremental on arrival time: each run takes events that arrived after the newest
+      arrival already loaded.
+  - name: events_by_interval
+    description: >
+      Incremental on the run's data interval, passed in by Airflow: each run takes
+      exactly the events that arrived inside its window.

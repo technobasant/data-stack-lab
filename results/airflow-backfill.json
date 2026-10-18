@@ -1,0 +1,619 @@
+{
+  "in_order": {
+    "runs": [
+      {
+        "day": "2026-09-01",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-02",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-03",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-04",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-05",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-06",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-07",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-08",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-09",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-10",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-11",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-12",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-13",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-14",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-15",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-16",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-17",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-18",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-19",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-20",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-21",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-22",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-23",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-24",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-25",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-26",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-27",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-28",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-29",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-30",
+        "state": "success"
+      }
+    ],
+    "tables": {
+      "events_by_event_time": {
+        "rows": 903785,
+        "missing": 2034,
+        "missing_in_backfill": 2034,
+        "missing_late": 2034,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_arrival": {
+        "rows": 905819,
+        "missing": 0,
+        "missing_in_backfill": 0,
+        "missing_late": 0,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_interval": {
+        "rows": 905819,
+        "missing": 0,
+        "missing_in_backfill": 0,
+        "missing_late": 0,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "arrived_in_backfill": 89508,
+      "late_in_backfill": 2291,
+      "truth": 905819
+    }
+  },
+  "late_file": {
+    "runs": [
+      {
+        "day": "2026-09-01",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-02",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-03",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-04",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-05",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-06",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-07",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-08",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-09",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-10",
+        "state": "failed"
+      },
+      {
+        "day": "2026-09-11",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-12",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-10",
+        "state": "success",
+        "rerun": true
+      },
+      {
+        "day": "2026-09-13",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-14",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-15",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-16",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-17",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-18",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-19",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-20",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-21",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-22",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-23",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-24",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-25",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-26",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-27",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-28",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-29",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-30",
+        "state": "success"
+      }
+    ],
+    "tables": {
+      "events_by_event_time": {
+        "rows": 900978,
+        "missing": 4841,
+        "missing_in_backfill": 4841,
+        "missing_late": 2033,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_arrival": {
+        "rows": 902930,
+        "missing": 2889,
+        "missing_in_backfill": 2889,
+        "missing_late": 81,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_interval": {
+        "rows": 905819,
+        "missing": 0,
+        "missing_in_backfill": 0,
+        "missing_late": 0,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "arrived_in_backfill": 89508,
+      "late_in_backfill": 2291,
+      "truth": 905819
+    }
+  },
+  "backwards": {
+    "runs": [
+      {
+        "day": "2026-09-30",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-29",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-28",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-27",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-26",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-25",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-24",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-23",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-22",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-21",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-20",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-19",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-18",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-17",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-16",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-15",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-14",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-13",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-12",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-11",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-10",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-09",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-08",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-07",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-06",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-05",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-04",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-03",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-02",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-01",
+        "state": "success"
+      }
+    ],
+    "tables": {
+      "events_by_event_time": {
+        "rows": 819387,
+        "missing": 86432,
+        "missing_in_backfill": 86432,
+        "missing_late": 2216,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_arrival": {
+        "rows": 819387,
+        "missing": 86432,
+        "missing_in_backfill": 86432,
+        "missing_late": 2216,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_interval": {
+        "rows": 905819,
+        "missing": 0,
+        "missing_in_backfill": 0,
+        "missing_late": 0,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "arrived_in_backfill": 89508,
+      "late_in_backfill": 2291,
+      "truth": 905819
+    }
+  },
+  "default_cron": {
+    "runs": [
+      {
+        "day": "2026-09-01",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-02",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-03",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-04",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-05",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-06",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-07",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-08",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-09",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-10",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-11",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-12",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-13",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-14",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-15",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-16",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-17",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-18",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-19",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-20",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-21",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-22",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-23",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-24",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-25",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-26",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-27",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-28",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-29",
+        "state": "success"
+      },
+      {
+        "day": "2026-09-30",
+        "state": "success"
+      }
+    ],
+    "tables": {
+      "events_by_event_time": {
+        "rows": 900900,
+        "missing": 4919,
+        "missing_in_backfill": 4919,
+        "missing_late": 2007,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "events_by_arrival": {
+        "rows": 902895,
+        "missing": 2996,
+        "missing_in_backfill": 2996,
+        "missing_late": 84,
+        "duplicates": 0,
+        "outside_window": 72
+      },
+      "events_by_interval": {
+        "rows": 816311,
+        "missing": 89508,
+        "missing_in_backfill": 89508,
+        "missing_late": 2291,
+        "duplicates": 0,
+        "outside_window": 0
+      },
+      "arrived_in_backfill": 89508,
+      "late_in_backfill": 2291,
+      "truth": 905819
+    }
+  }
+}

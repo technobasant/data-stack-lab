@@ -11,8 +11,9 @@ Every module shares one seeded dataset: a B2B subscription product with four pla
 | Module | What it builds | What it measured |
 |---|---|---|
 | [`dbt/`](dbt) | A Kimball star schema: a Type 2 account dimension from dbt snapshots, invoice and daily-usage facts, enforced contracts, 46 data tests and 3 unit tests. Runs unchanged on dbt Core 1.12 and dbt v2. | Attributing revenue by each account's *current* plan (Type 1) put **15.1%** of a year's revenue on the wrong plan, including $10,700 on the free plan. The Type 2 dimension put 5,048 of 5,048 invoices on the plan they billed. |
+| [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table scored. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
 
-Next, on the same data: Airflow (daily incremental loads, backfills, late events), data quality checks, Databricks, Snowflake, Spark, Kafka, AWS and BigQuery.
+Next, on the same data: data quality checks, Databricks, Snowflake, Spark, Kafka, AWS and BigQuery.
 
 ## The dataset
 
@@ -38,9 +39,10 @@ make all       # generate the data, build the warehouse, check the published fig
 make docs      # dbt docs with the lineage graph, under dbt/target
 
 DBT="uvx --from dbt-oss==2.0.8 dbt" make all    # the same project on dbt v2
+make airflow   # the Airflow module: September backfilled four ways through the DAGs
 ```
 
-`make all` is what CI runs on both dbt engines. It takes a few minutes.
+`make all` is what CI runs on both dbt engines, and `make airflow` what its Airflow job runs. Each takes a few minutes.
 
 ## Results: dimensional modelling in dbt
 
@@ -84,6 +86,21 @@ Second, a passing unit test depends on the engine running it. dbt v2 never compa
 
 dbt v2 (the Rust engine, `dbt-oss` 2.0.8, Apache-2.0) ran the project after one fix: `loaded_at_field` must sit under `config:`, which dbt Core 1.12 accepts either way. Both engines build the same 11 models, pass the same 46 data tests and 3 unit tests, and give byte-identical measurements. CI runs both. The difference is the timestamp gap in v2's unit tests, above.
 
+## Results: incremental loads and backfills in Airflow
+
+Figures from [`results/airflow-backfill.json`](results/airflow-backfill.json); the method is in [MEASUREMENTS.md](MEASUREMENTS.md#airflow-incremental-loads-and-backfills) and the module in [`airflow/`](airflow).
+
+One DAG lands a day of event files and runs three incremental models: one takes events newer than the newest event time already loaded, one takes those that arrived after the newest arrival already loaded, and one takes exactly what arrived in the run's data interval. September, 89,508 events, was backfilled four ways:
+
+| Scenario | 30 runs | Event-time mark | Arrival-time mark | Data interval |
+|---|---|---:|---:|---:|
+| In order | all green | lost 2,034 (2.27%) | 0 | 0 |
+| The 10 Sep file lands two days late; the day is re-run | re-run green | lost 4,841 (5.41%) | lost 2,889 (3.23%) | 0 |
+| Newest day first (`--run-backwards`) | all green | lost 86,432 (96.56%) | lost 86,432 (96.56%) | 0 |
+| Airflow 3's default `@daily` | all green | lost 4,919 (5.50%) | lost 2,996 (3.35%) | **lost 89,508 (100%)** |
+
+A high-water mark remembers how far it got, not what it has seen, so any day processed after a later one is skipped, and nothing fails. Loading by the data interval is right in every order, but in Airflow 3 `@daily` became a `CronTriggerTimetable` whose interval starts and ends at the same instant: an empty window, thirty times, with nothing marked failed. `saas_daily` asks for `CronDataIntervalTimetable` explicitly, and a test pins both schedules. The in-order backfill was also run on a real scheduler (`airflow standalone`, `airflow backfill create`), and its tables matched the harness exactly.
+
 ## Decisions
 
 - **Snapshot the source, not a staging model.** The snapshot is the only record of history, so it keeps exactly what arrived. Cleaning happens downstream, where it can be changed and rebuilt.
@@ -99,7 +116,8 @@ dbt v2 (the Rust engine, `dbt-oss` 2.0.8, Apache-2.0) ran the project after one 
 
 ```
 datagen/            the seeded generator shared by every module
-dbt/                the dbt project: staging, snapshots, marts, tests
+dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow module
+airflow/            the DAGs and the backfill harness
 scripts/            warehouse.py (load + replay + build), measure.py, mutants.py
 results/            published measurements; CI checks them
 tests/              the generator's rules (pytest)

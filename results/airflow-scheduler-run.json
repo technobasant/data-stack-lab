@@ -1,0 +1,50 @@
+{
+  "what": "September backfilled on a real scheduler, not dag.test(): airflow standalone (Airflow 3.3.2, SQLite metadata, LocalExecutor) and `airflow backfill create --dag-id saas_daily --from-date 2026-09-01 --to-date 2026-09-30 --max-active-runs 1`, run once on 2026-10-18",
+  "runs": [
+    {
+      "run_type": "backfill",
+      "state": "success",
+      "runs": 30,
+      "first_start": "2026-10-18 09:44:03.166762",
+      "last_end": "2026-10-18 09:47:41.900371"
+    },
+    {
+      "run_type": "scheduled",
+      "state": "failed",
+      "runs": 1,
+      "first_start": "2026-10-18 09:44:01.200967",
+      "last_end": "2026-10-18 09:44:05.297282"
+    }
+  ],
+  "note": "Unpausing the DAG (catchup=False) also scheduled the latest interval, 17 October; it failed at land because no file exists for that day, so it never reached the models.",
+  "tables": {
+    "events_by_event_time": {
+      "rows": 903785,
+      "missing": 2034,
+      "missing_in_backfill": 2034,
+      "missing_late": 2034,
+      "duplicates": 0,
+      "outside_window": 0
+    },
+    "events_by_arrival": {
+      "rows": 905819,
+      "missing": 0,
+      "missing_in_backfill": 0,
+      "missing_late": 0,
+      "duplicates": 0,
+      "outside_window": 0
+    },
+    "events_by_interval": {
+      "rows": 905819,
+      "missing": 0,
+      "missing_in_backfill": 0,
+      "missing_late": 0,
+      "duplicates": 0,
+      "outside_window": 0
+    },
+    "arrived_in_backfill": 89508,
+    "late_in_backfill": 2291,
+    "truth": 905819
+  },
+  "identical_to_in_order_dag_test": true
+}

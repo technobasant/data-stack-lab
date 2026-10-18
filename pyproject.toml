@@ -16,6 +16,9 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.14"]
+# The Airflow module only: `uv sync --group airflow`. Kept out of the default install so
+# the dbt module does not pull in a scheduler.
+airflow = ["apache-airflow==3.3.2"]
 
 [tool.uv]
 package = false

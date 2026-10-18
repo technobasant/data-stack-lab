@@ -84,3 +84,26 @@ jobs:
             dbt/target/manifest.json
             dbt/target/catalog.json
           retention-days: 30
+
+  # The Airflow module: September backfilled through the real DAGs three ways (in order,
+  # a file that lands late and is re-run, and Airflow 3's default "@daily"), every
+  # incremental table scored against every event that arrived. Exact figures checked.
+  airflow:
+    name: Airflow 3.3 backfill
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync --locked --group airflow
+      - name: Generate the dataset
+        run: uv run python -m datagen --scale lab --seed 7 --out data
+      - name: The DAGs load, and each schedule gives the window the results rely on
+        run: uv run pytest -q tests/test_dags.py
+      - name: Backfill September three ways; the published figures, exactly
+        run: uv run python airflow/backfill.py --check

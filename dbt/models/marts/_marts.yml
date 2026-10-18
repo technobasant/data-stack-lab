@@ -180,18 +180,24 @@ unit_tests:
     model: fct_invoices
     given:
       - input: ref('stg_billing__invoices')
-        rows:
-          - {invoice_id: INV-1, account_id: 7, invoiced_at: "2026-02-01 00:00:00", amount_usd: 49}
-          - {invoice_id: INV-2, account_id: 7, invoiced_at: "2026-03-01 00:00:00", amount_usd: 199}
+        format: csv
+        rows: |
+          invoice_id,account_id,invoiced_at,amount_usd
+          INV-1,7,2026-02-01 00:00:00,49
+          INV-2,7,2026-03-01 00:00:00,199
       - input: ref('dim_account')
-        rows:
-          - {account_key: v1, account_id: 7, valid_from: "2025-03-01 09:00:00", valid_to: "2026-02-14 08:00:00"}
-          - {account_key: v2, account_id: 7, valid_from: "2026-02-14 08:00:00", valid_to: "2026-05-02 10:00:00"}
-          - {account_key: v3, account_id: 7, valid_from: "2026-05-02 10:00:00", valid_to: "9999-12-31 00:00:00"}
+        format: csv
+        rows: |
+          account_key,account_id,valid_from,valid_to
+          v1,7,2025-03-01 09:00:00,2026-02-14 08:00:00
+          v2,7,2026-02-14 08:00:00,2026-05-02 10:00:00
+          v3,7,2026-05-02 10:00:00,9999-12-31 00:00:00
     expect:
-      rows:
-        - {invoice_id: INV-1, account_key: v1, invoice_date_key: 20260201}
-        - {invoice_id: INV-2, account_key: v2, invoice_date_key: 20260301}
+      format: csv
+      rows: |
+        invoice_id,account_key,invoice_date_key
+        INV-1,v1,20260201
+        INV-2,v2,20260301
 
 exposures:
   - name: revenue_by_plan_report

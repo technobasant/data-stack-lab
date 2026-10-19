@@ -66,6 +66,8 @@ Over the month:
 
 ## Running it
 
+From the repository root, after `make data`:
+
 ```bash
 make quality                              # writes results/quality.json
 uv run python quality/run.py --check      # what CI runs: the published figures, exactly

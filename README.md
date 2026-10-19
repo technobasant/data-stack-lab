@@ -6,6 +6,27 @@ Hands-on data engineering projects, one per tool: dbt, Airflow, data quality, Sp
 
 Every project uses the same synthetic SaaS data, runs with one command, and has its results checked in CI. The Databricks project needs a workspace, so CI checks its prediction and the recorded run instead of re-running it.
 
+## For architects
+
+One finding per project, with every number already published below or in [MEASUREMENTS.md](MEASUREMENTS.md).
+
+| Risk | Silent default | Measured impact | Control | Enforced |
+|---|---|---|---|---|
+| Revenue history rewritten when a dimension is updated in place | Type 1: update the account dimension in place | $152,227 (15.1%) of $1,010,202 on the wrong plan; Type 2 matched 5,048 of 5,048 invoices | A Type 2 dimension, built from dbt snapshots | dbt test + CI (`scripts/measure.py --check`) |
+| A backfill or the default schedule silently loses a day | A high-water-mark filter; Airflow 3's `@daily` (`CronTriggerTimetable`) | Backwards backfill lost 96.56% of September with every run green; `@daily` lost 100% (0 of 89,508), also green | Filter by the run's own data interval; request `CronDataIntervalTimetable` explicitly | CI (`airflow/backfill.py --check`); `tests/test_dags.py` pins both timetables |
+| Missing rows leave no bad row for a row-level check to catch | Row-level checks only (not null, unique, accepted values) | 3 incidents removed 3,362 rows from a day's delivery with 0 bad rows produced | Manifest totals, and volume/per-platform-share batch checks | dbt test + CI (`quality/run.py --check`) |
+| A one-day re-run deletes the other 364 | `partitionOverwriteMode=static` (Spark's default) with `mode("overwrite")` | 333,082 rows across 365 partitions became 1,070 rows in 1 | `partitionOverwriteMode=dynamic` | CI (`spark/run.py --check`); a job setting, not a dbt or pipeline check |
+| A corrected re-upload under the same file name is never re-read | `COPY INTO` / Auto Loader's exactly-once file tracking | 1,638 of 29,095 events stayed missing until `allowOverwrites` + `MERGE` | `cloudFiles.allowOverwrites = true`, plus `MERGE` on the event key | CI checks the prediction (`databricks/run.py --plan --check`); the workspace run is recorded once, not CI-checked |
+| A contract written for one warehouse doesn't build on another | `varchar` as the declared contract type | First build failed (`DATATYPE_MISSING_SIZE`); one change (`varchar` → `string`) fixed it, with the published revenue figures identical | Declare `string`, not `varchar` (the same on DuckDB, Databricks, Snowflake and BigQuery) | dbt contract enforcement; recorded once (`results/dbt-databricks.json`), not CI-checked |
+
+Case study: [basantbhattarai.com.np/work/data-stack-lab](https://basantbhattarai.com.np/work/data-stack-lab/). Write-ups, in order:
+
+1. [A Type 1 dimension put 15% of a year's revenue on the wrong plan](https://basantbhattarai.com.np/writing/type-1-dimension-revenue-wrong-plan/)
+2. [On Airflow 3's @daily, an incremental load ran green 30 times and loaded nothing](https://basantbhattarai.com.np/writing/airflow-3-daily-no-data-interval/)
+3. [Wrong data and missing data are caught by different checks](https://basantbhattarai.com.np/writing/wrong-data-missing-data-different-checks/)
+4. [Re-running one day of a Spark job deleted the other 364](https://basantbhattarai.com.np/writing/spark-rerun-one-day-deleted-the-rest/)
+5. [The producer re-sent the fixed file. COPY INTO never read it.](https://basantbhattarai.com.np/writing/copy-into-never-read-the-corrected-file/)
+
 ## Projects
 
 | Project | What it builds | Result |
@@ -46,9 +67,10 @@ make airflow   # the Airflow project: September backfilled four ways through the
 make quality   # the data-quality project: September delivered with nine defects, two policies
 make spark     # the Spark project: re-running a day, small files, pruning (needs Java 17+)
 make databricks  # the Databricks project (needs a workspace; see databricks/README.md)
+make verify    # every offline check CI runs, the --check way, against a fresh dataset
 ```
 
-`make all` is what CI runs for the dbt project on both dbt engines; `make airflow`, `make quality` and `make spark` are what it runs for the others. Each takes a few minutes; the Spark run about ten. For Databricks, CI runs `databricks/run.py --plan --check`, which needs no workspace.
+`make all` builds and checks the dbt project's figures the way CI does, on both dbt engines (`scripts/measure.py --check`, `scripts/mutants.py --check`). `make airflow`, `make quality` and `make spark` write their results/*.json rather than checking them; CI runs the same harnesses with `--check` instead, which fails on any difference. `make verify` runs every one of those checks, against a fresh dataset, the way CI does. Each takes a few minutes; the Spark run about ten. For Databricks, CI runs `databricks/run.py --plan --check`, which needs no workspace.
 
 ## Results: dimensional modelling in dbt
 
@@ -166,6 +188,8 @@ From [`results/databricks.json`](results/databricks.json), one run on Databricks
 
 ## Decisions
 
+### dbt
+
 - **Snapshot the source, not a staging model.** The snapshot is the only record of history, so it keeps exactly what arrived. Cleaning happens downstream, where it can be changed and rebuilt.
 - **Timestamp strategy, dated by the application's `updated_at`.** Versions are dated by when the change happened, not by when the snapshot ran. The cost is the identical versions above. The check strategy compares column values instead and would skip them, but by default it dates each version to the snapshot run.
 - **The first version reaches back to signup.** An account that changed before its first extract is first seen after signup, and activity in that gap would find no version. Its first known state is the best available answer, and `version_number = 1` marks it.
@@ -174,6 +198,18 @@ From [`results/databricks.json`](results/databricks.json), one run on Databricks
 - **No dbt packages.** The three custom generic tests (validity windows that neither overlap nor leave gaps, and a composite grain) take under 50 lines. Without packages the project runs offline and on dbt v2 unchanged.
 - **Portable SQL.** Cross-database macros (`dbt.date_spine`, `dbt.date_trunc`, `dbt.split_part`) and no `QUALIFY`, so the Snowflake, Databricks and BigQuery projects can run this dbt project, not a copy of it.
 - **Personal data stops at staging.** Marts carry the e-mail domain, never the address or the name.
+
+### Airflow
+
+- **Ask for `CronDataIntervalTimetable` explicitly, instead of `@daily`.** Airflow 3's default is a `CronTriggerTimetable` whose interval starts and ends at the same instant; `saas_daily` requests the data-interval timetable by name, and a test pins both schedules so a change in Airflow's default fails CI before it changes a result.
+
+### Data quality
+
+- **Redeliveries warn; they don't fail.** The batch model deduplicates first (first delivery wins), so a duplicate file is harmless by the time row-level tests run; a warning flags it without holding the day for a person.
+
+### Spark
+
+- **Set `partitionOverwriteMode` in the job's configuration, not a notebook.** It is Spark's one setting that decides whether a partitioned overwrite replaces everything or just the partitions written; table formats make the same choice explicit (Delta's `REPLACE WHERE`, Iceberg's dynamic overwrite).
 
 ## Layout
 

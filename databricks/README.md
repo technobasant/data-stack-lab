@@ -101,6 +101,8 @@ time zone and Databricks reads as `TIMESTAMP_NTZ`, needed nothing. Figures in
 
 ## Running it
 
+From the repository root, after `make data`:
+
 ```bash
 make databricks                                   # needs a workspace, about 30 minutes
 uv run --group databricks python databricks/dbt_build.py   # the dbt project on Databricks, about 8 minutes

@@ -56,6 +56,8 @@ day's rows are spread across almost every file, and the query has to open them.
 
 ## Running it
 
+From the repository root, after `make data`:
+
 ```bash
 make spark                                       # uv sync --group spark, then the three experiments
 uv run --group spark python spark/run.py --check # what CI runs: the published counts, exactly

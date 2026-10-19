@@ -79,9 +79,9 @@ fix from the Spark project is not available; Delta's own `REPLACE WHERE` and
 
 [`dbt_build.py`](dbt_build.py) builds the dbt project the way `scripts/warehouse.py` does on
 DuckDB: the raw files to a Unity Catalog volume, the 13 monthly account extracts replayed
-through `dbt snapshot` one at a time, then `dbt build`, with dbt-databricks 1.12.7 on the same
-SQL warehouse. Then it asks the Databricks marts the revenue questions of
-`scripts/measure.py`, with the same SQL.
+through `dbt snapshot` one at a time, then `dbt build`, with dbt-databricks 1.12.7 (dbt-core
+1.12.5, pinned) on the same SQL warehouse. Then it asks the Databricks marts the revenue
+questions of `scripts/measure.py`, with the same SQL.
 
 | | DuckDB (published) | Databricks |
 |---|---:|---:|
@@ -111,4 +111,11 @@ Needs `DATABRICKS_HOST`, `DATABRICKS_TOKEN` and `DATABRICKS_HTTP_PATH` (a SQL wa
 HTTP path) in the environment. The run creates the schema `workspace.data_stack_lab`
 (override with `DATABRICKS_SCHEMA`), two volumes and one pipeline, and replaces them on
 every run. On Free Edition a pipeline update can be refused while another serverless
-resource winds down; the run waits and retries.
+resource winds down; the run waits and retries, up to 30 minutes per update.
+
+`dbt_build.py` is separate and needs its own rights: it creates the catalog `dsl`
+(`CREATE CATALOG IF NOT EXISTS`, which needs catalog-creation privilege on the metastore,
+not just a schema in an existing catalog) and the schema `dsl.raw`, then on every run
+drops `dsl.staging`, `dsl.snapshots` and `dsl.marts` with `DROP SCHEMA ... CASCADE` before
+rebuilding them with `dbt build`. `dsl.raw` is never dropped; its volume holds the
+extracts and sources dbt reads.

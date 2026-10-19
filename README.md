@@ -14,7 +14,7 @@ Every project uses the same synthetic SaaS data, runs with one command, and has 
 | [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table checked. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
 | [`quality/`](quality) | A month of daily deliveries with nine realistic defects (a duplicate file, nulls, a renamed column, a truncated upload, local time labelled UTC, a new event type, a silent platform, orphan keys, a late third), checked in dbt by contract, row tests, batch tests and control totals, under a block and a quarantine policy. | Blocking let **0 of 3,198** bad rows through and held 19,545 good ones; quarantine let 87 through and held 12,865. The three losses that left no bad rows (3,362 rows never delivered) were caught only by control totals, volume and per-platform share. |
 | [`spark/`](spark) | A PySpark 4.2 batch job (a daily usage rollup written as Parquet partitioned by day) and three defaults it trips over: re-running one day, the files a partitioned write produces, and partition pruning. | Re-running one day with Spark's default `static` overwrite left **1 of 365** daily partitions; `dynamic` kept all 365. A partitioned write produced 5,970 files for a month with AQE off and 1,460 for the year with AQE on; repartitioning by the partition column gave one file a day. |
-| [`databricks/`](databricks) | Ten days of event files delivered into a Unity Catalog volume with a resent duplicate, a truncated upload corrected under the same name, a late file and a repeated run, loaded six ways (`INSERT … read_files`, `COPY INTO`, Auto Loader in a Lakeflow pipeline, each with and without `MERGE`); then one day of the Spark rollup re-run on Delta five ways. | `COPY INTO` and Auto Loader never read the corrected file: **1,638 events** stayed missing. Only Auto Loader with `allowOverwrites` followed by a `MERGE` on the event key ended with exactly the 29,095 events sent. On Delta, `INSERT OVERWRITE`, even with `PARTITION (activity_date)`, left 1 of 365 days, and `RESTORE` brought them back. |
+| [`databricks/`](databricks) | Ten days of event files delivered into a Unity Catalog volume with a resent duplicate, a truncated upload corrected under the same name, a late file and a repeated run, loaded six ways (`INSERT … read_files`, `COPY INTO`, Auto Loader in a Lakeflow pipeline, each with and without `MERGE`); then one day of the Spark rollup re-run on Delta five ways, and the dbt project built there. | `COPY INTO` and Auto Loader never read the corrected file: **1,638 events** stayed missing. Only Auto Loader with `allowOverwrites` followed by a `MERGE` on the event key ended with exactly the 29,095 events sent. On Delta, `INSERT OVERWRITE`, even with `PARTITION (activity_date)`, left 1 of 365 days, and `RESTORE` brought them back. The dbt project built on Databricks after one change (contract types `varchar` → `string`) and gave the published revenue figures exactly. |
 
 ## The data
 
@@ -158,6 +158,11 @@ From [`results/databricks.json`](results/databricks.json), one run on Databricks
 | `REPLACE WHERE activity_date = …` | 365 |
 | `REPLACE USING (activity_date)` | 365 |
 | `SET spark.sql.sources.partitionOverwriteMode` | not available on a SQL warehouse |
+
+| The dbt project on Databricks (dbt-databricks 1.12.7) | Result |
+|---|---|
+| Models, data tests, unit tests | 11, 46 and 3, all passing, after one change: contract types `varchar` → `string` |
+| The published revenue figures | identical: 5,048 of 5,048 invoices on the plan they billed; $152,227 on the wrong plan with Type 1 |
 
 ## Decisions
 

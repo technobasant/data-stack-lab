@@ -442,3 +442,29 @@ the workspace; they do not depend on scale. Timings do, and are not compared. Fi
 notification mode, `cloudFiles.backfillInterval` and Auto Loader's handling of files
 changed mid-write were not tested.
 
+**The dbt project on Databricks.** Source:
+[`results/dbt-databricks.json`](results/dbt-databricks.json), written by
+[`databricks/dbt_build.py`](databricks/dbt_build.py) on 2026-10-19 with dbt-databricks 1.12.7
+(dbt Core 1.12.5, run through `uvx` because the adapter pins databricks-sdk below 0.118) on the
+same serverless SQL warehouse, catalog `dsl`. The raw parquet files were read with
+`read_files` as written (timestamps arrive as `TIMESTAMP_NTZ`); each of the 13 extracts
+replaced `dsl.raw.accounts` before its `dbt snapshot`; then `dbt build --exclude
+resource_type:snapshot`. The revenue and model questions of `scripts/measure.py` were asked of
+the Databricks marts with the same SQL.
+
+| | DuckDB, published | Databricks |
+|---|---:|---:|
+| Models / data tests / unit tests passing | 11 / 46 / 3 | 11 / 46 / 3 |
+| Accounts, account versions, versions identical to the previous one | 1,000, 1,521, 33 | 1,000, 1,521, 33 |
+| Invoices, revenue | 5,048, $1,010,202 | 5,048, $1,010,202 |
+| Invoices on the plan they billed: Type 2, Type 1 | 5,048, 4,175 | 5,048, 4,175 |
+| Revenue on the wrong plan: Type 2, Type 1 | $0, $152,227 | $0, $152,227 |
+
+The first run failed in `dim_account`'s contract check on `cast(null as varchar)`
+(`DATATYPE_MISSING_SIZE`). The 13 contract columns declared `varchar` now declare `string`;
+with that, every DuckDB and dbt v2 result and mutant record in this file is unchanged
+(re-checked with `measure.py --check` and `mutants.py --check` on both engines). Observed: a
+snapshot run took 22–31 s on the 2X-Small warehouse against about 2.5 s on DuckDB locally, and
+the build 97 s against 3.6 s; the warehouse runs each statement remotely, so most of that is
+per-statement latency, not work.
+

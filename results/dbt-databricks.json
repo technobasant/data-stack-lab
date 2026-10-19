@@ -1,0 +1,183 @@
+{
+  "databricks_sql": "2026.39",
+  "adapter": "dbt-databricks 1.12.7",
+  "changes_to_the_project": [
+    "model contracts: data_type varchar became string (13 columns). dbt checks a contract by casting null to each declared type, and Databricks rejects VARCHAR without a length (DATATYPE_MISSING_SIZE); string means the same on DuckDB, Databricks, Snowflake and BigQuery"
+  ],
+  "snapshots": [
+    {
+      "extract": "2025-10-01",
+      "seconds": 24.9,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2025-11-01",
+      "seconds": 22.6,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2025-12-01",
+      "seconds": 22.4,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-01-01",
+      "seconds": 22.1,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-02-01",
+      "seconds": 26.4,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-03-01",
+      "seconds": 23.3,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-04-01",
+      "seconds": 24.8,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-05-01",
+      "seconds": 30.8,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-06-01",
+      "seconds": 26.3,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-07-01",
+      "seconds": 24.4,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-08-01",
+      "seconds": 26.6,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-09-01",
+      "seconds": 26.7,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    },
+    {
+      "extract": "2026-10-01",
+      "seconds": 28.3,
+      "statuses": {
+        "snapshot": {
+          "success": 1
+        }
+      },
+      "failed": []
+    }
+  ],
+  "build": {
+    "seconds": 96.5,
+    "statuses": {
+      "model": {
+        "success": 11
+      },
+      "test": {
+        "pass": 46
+      },
+      "unit_test": {
+        "pass": 3
+      },
+      "exposure": {
+        "no-op": 1
+      }
+    },
+    "failed": []
+  },
+  "score": {
+    "model": {
+      "accounts": 1000.0,
+      "account_versions": 1521.0,
+      "versions_same_as_previous": 33.0
+    },
+    "revenue": {
+      "invoices": 5048.0,
+      "revenue_usd": 1010202.0,
+      "type2_invoices_right": 5048.0,
+      "type1_invoices_right": 4175.0,
+      "type2_usd_on_wrong_plan": 0.0,
+      "type1_usd_on_wrong_plan": 152227.0
+    }
+  },
+  "matches_duckdb": {
+    "accounts": true,
+    "account_versions": true,
+    "versions_same_as_previous": true,
+    "invoices": true,
+    "revenue_usd": true,
+    "type2_invoices_right": true,
+    "type1_invoices_right": true,
+    "type2_usd_on_wrong_plan": true,
+    "type1_usd_on_wrong_plan": true
+  }
+}

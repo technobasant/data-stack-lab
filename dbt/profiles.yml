@@ -9,3 +9,12 @@ saas:
       path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
       schema: main
       threads: 4
+    databricks:
+      # databricks/dbt_build.py: the same project on a Databricks SQL warehouse, catalog dsl.
+      type: databricks
+      catalog: dsl
+      schema: main
+      host: "{{ env_var('DATABRICKS_HOST', '') | replace('https://', '') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH', '') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN', '') }}"
+      threads: 4

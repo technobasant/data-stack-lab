@@ -1,4 +1,4 @@
-# Databricks: loading files that change, and re-running a day on Delta
+# Databricks: loading files that change, re-running a day on Delta, and the dbt project
 
 The Databricks project of [data-stack-lab](..). Ten days of September's events are
 delivered as daily files into a Unity Catalog volume and loaded six ways; then one day of
@@ -75,10 +75,35 @@ On a SQL warehouse `spark.sql.sources.partitionOverwriteMode` cannot be set at a
 fix from the Spark project is not available; Delta's own `REPLACE WHERE` and
 `REPLACE USING` are.
 
+## 3. The dbt project, on Databricks
+
+[`dbt_build.py`](dbt_build.py) builds the dbt project the way `scripts/warehouse.py` does on
+DuckDB: the raw files to a Unity Catalog volume, the 13 monthly account extracts replayed
+through `dbt snapshot` one at a time, then `dbt build`, with dbt-databricks 1.12.7 on the same
+SQL warehouse. Then it asks the Databricks marts the revenue questions of
+`scripts/measure.py`, with the same SQL.
+
+| | DuckDB (published) | Databricks |
+|---|---:|---:|
+| Models, data tests, unit tests passing | 11, 46, 3 | 11, 46, 3 |
+| Account versions from 13 snapshots | 1,521 | 1,521 |
+| Invoices on the plan they billed (Type 2) | 5,048 of 5,048 | 5,048 of 5,048 |
+| Revenue on the wrong plan with Type 1 | $152,227 | $152,227 |
+| One snapshot run, the build | about 2.5 s, 3.6 s | about 25 s, 97 s |
+
+It needed one change to the project, now made for every engine: the model contracts said
+`varchar`, and dbt checks a contract by casting `null` to each declared type, which
+Databricks refuses for `VARCHAR` without a length (`DATATYPE_MISSING_SIZE`). They say
+`string` now, which means the same on DuckDB, Databricks, Snowflake and BigQuery; the
+DuckDB and dbt v2 results are unchanged. Timestamps, which the generator writes without a
+time zone and Databricks reads as `TIMESTAMP_NTZ`, needed nothing. Figures in
+[`results/dbt-databricks.json`](../results/dbt-databricks.json).
+
 ## Running it
 
 ```bash
 make databricks                                   # needs a workspace, about 30 minutes
+uv run --group databricks python databricks/dbt_build.py   # the dbt project on Databricks, about 8 minutes
 uv run python databricks/run.py --plan --check    # what CI runs: deliveries and predictions
 ```
 

@@ -1,0 +1,124 @@
+{
+  "days": "2026-09-01..2026-09-10",
+  "expected_events": 29095,
+  "incidents": {
+    "duplicate_file_rows": 2904,
+    "truncated_delivered": 1091,
+    "truncated_full": 2729,
+    "late_rows": 987,
+    "rerun_day_rows": 2775
+  },
+  "runs": [
+    {
+      "day": "2026-09-01",
+      "delivered": [
+        "events-2026-09-01.parquet <- 2026-09-01"
+      ]
+    },
+    {
+      "day": "2026-09-02",
+      "delivered": [
+        "events-2026-09-02.parquet <- 2026-09-02",
+        "events-2026-09-02-resent.parquet <- 2026-09-02"
+      ]
+    },
+    {
+      "day": "2026-09-03",
+      "delivered": [
+        "events-2026-09-03.parquet <- 2026-09-03"
+      ]
+    },
+    {
+      "day": "2026-09-04",
+      "delivered": [
+        "events-2026-09-04.parquet <- 2026-09-04-first-40pct"
+      ]
+    },
+    {
+      "day": "2026-09-05",
+      "delivered": [
+        "events-2026-09-05.parquet <- 2026-09-05",
+        "events-2026-09-04.parquet <- 2026-09-04"
+      ]
+    },
+    {
+      "day": "2026-09-06",
+      "delivered": [
+        "events-2026-09-06.parquet <- 2026-09-06-on-time"
+      ]
+    },
+    {
+      "day": "2026-09-07",
+      "delivered": [
+        "events-2026-09-07.parquet <- 2026-09-07"
+      ]
+    },
+    {
+      "day": "2026-09-08",
+      "delivered": [
+        "events-2026-09-08.parquet <- 2026-09-08",
+        "events-2026-09-06-late.parquet <- 2026-09-06-late"
+      ]
+    },
+    {
+      "day": "2026-09-09",
+      "delivered": [
+        "events-2026-09-09.parquet <- 2026-09-09"
+      ]
+    },
+    {
+      "day": "2026-09-09",
+      "delivered": []
+    },
+    {
+      "day": "2026-09-10",
+      "delivered": [
+        "events-2026-09-10.parquet <- 2026-09-10"
+      ]
+    }
+  ],
+  "predicted": {
+    "insert_by_name": {
+      "rows": 32149,
+      "events": 26470,
+      "missing_events": 2625,
+      "duplicate_rows": 5679,
+      "unexpected_events": 0
+    },
+    "copy_into": {
+      "rows": 30361,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 2904,
+      "unexpected_events": 0
+    },
+    "copy_into_merge": {
+      "rows": 27457,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 0,
+      "unexpected_events": 0
+    },
+    "auto_loader": {
+      "rows": 30361,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 2904,
+      "unexpected_events": 0
+    },
+    "auto_loader_overwrites": {
+      "rows": 33090,
+      "events": 29095,
+      "missing_events": 0,
+      "duplicate_rows": 3995,
+      "unexpected_events": 0
+    },
+    "auto_loader_merge": {
+      "rows": 29095,
+      "events": 29095,
+      "missing_events": 0,
+      "duplicate_rows": 0,
+      "unexpected_events": 0
+    }
+  }
+}

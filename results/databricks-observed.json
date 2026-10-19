@@ -1,0 +1,8 @@
+{
+  "note": "one run, Free Edition; not compared",
+  "load_insert_by_name_s": 25.0,
+  "load_copy_into_s": 25.7,
+  "load_copy_into_merge_s": 23.1,
+  "load_auto_loader_merge_s": 24.1,
+  "load_auto_loader_pipeline_s": 891.3
+}

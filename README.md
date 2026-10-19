@@ -1,10 +1,10 @@
 # data-stack-lab
 
-Hands-on data engineering projects, one per tool: dbt, Airflow, data quality and Spark so far; Databricks, Snowflake, Kafka, AWS and BigQuery next.
+Hands-on data engineering projects, one per tool: dbt, Airflow, data quality, Spark and Databricks so far; Snowflake, Kafka, AWS and BigQuery next.
 
 [![ci](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml)
 
-Every project uses the same synthetic SaaS data, runs with one command, and has its results checked in CI.
+Every project uses the same synthetic SaaS data, runs with one command, and has its results checked in CI. The Databricks project needs a workspace, so CI checks its prediction and the recorded run instead of re-running it.
 
 ## Projects
 
@@ -14,6 +14,7 @@ Every project uses the same synthetic SaaS data, runs with one command, and has 
 | [`airflow/`](airflow) | A daily Airflow 3 DAG that lands each day's event files and runs three dbt incremental models that differ only in how they pick what is new. September is backfilled four ways and every table checked. | Backfilled newest-first, both high-water-mark models lost **96.56%** of the month with every run green; the model that loads the run's data interval lost nothing in any order. On Airflow 3's default `@daily` that same model loaded **0 of 89,508** events, also with every run green. |
 | [`quality/`](quality) | A month of daily deliveries with nine realistic defects (a duplicate file, nulls, a renamed column, a truncated upload, local time labelled UTC, a new event type, a silent platform, orphan keys, a late third), checked in dbt by contract, row tests, batch tests and control totals, under a block and a quarantine policy. | Blocking let **0 of 3,198** bad rows through and held 19,545 good ones; quarantine let 87 through and held 12,865. The three losses that left no bad rows (3,362 rows never delivered) were caught only by control totals, volume and per-platform share. |
 | [`spark/`](spark) | A PySpark 4.2 batch job (a daily usage rollup written as Parquet partitioned by day) and three defaults it trips over: re-running one day, the files a partitioned write produces, and partition pruning. | Re-running one day with Spark's default `static` overwrite left **1 of 365** daily partitions; `dynamic` kept all 365. A partitioned write produced 5,970 files for a month with AQE off and 1,460 for the year with AQE on; repartitioning by the partition column gave one file a day. |
+| [`databricks/`](databricks) | Ten days of event files delivered into a Unity Catalog volume with a resent duplicate, a truncated upload corrected under the same name, a late file and a repeated run, loaded six ways (`INSERT … read_files`, `COPY INTO`, Auto Loader in a Lakeflow pipeline, each with and without `MERGE`); then one day of the Spark rollup re-run on Delta five ways. | `COPY INTO` and Auto Loader never read the corrected file: **1,638 events** stayed missing. Only Auto Loader with `allowOverwrites` followed by a `MERGE` on the event key ended with exactly the 29,095 events sent. On Delta, `INSERT OVERWRITE`, even with `PARTITION (activity_date)`, left 1 of 365 days, and `RESTORE` brought them back. |
 
 ## The data
 
@@ -44,9 +45,10 @@ DBT="uvx --from dbt-oss==2.0.8 dbt" make all    # the same project on dbt v2
 make airflow   # the Airflow project: September backfilled four ways through the DAGs
 make quality   # the data-quality project: September delivered with nine defects, two policies
 make spark     # the Spark project: re-running a day, small files, pruning (needs Java 17+)
+make databricks  # the Databricks project (needs a workspace; see databricks/README.md)
 ```
 
-`make all` is what CI runs for the dbt project on both dbt engines; `make airflow`, `make quality` and `make spark` are what it runs for the others. Each takes a few minutes; the Spark run about ten.
+`make all` is what CI runs for the dbt project on both dbt engines; `make airflow`, `make quality` and `make spark` are what it runs for the others. Each takes a few minutes; the Spark run about ten. For Databricks, CI runs `databricks/run.py --plan --check`, which needs no workspace.
 
 ## Results: dimensional modelling in dbt
 
@@ -136,6 +138,27 @@ Counts from [`results/spark.json`](results/spark.json); the method is in [MEASUR
 | Write the year, repartitioned by day | 365 files, one a day |
 | Files holding one day's rows | 1 of 365 partitioned; 199 of 200 unpartitioned |
 
+## Results: Databricks
+
+From [`results/databricks.json`](results/databricks.json), one run on Databricks Free Edition (Databricks SQL 2026.39); the prediction it matched is [`results/databricks-plan.json`](results/databricks-plan.json). Method in [MEASUREMENTS.md](MEASUREMENTS.md#databricks-loading-files-that-change-re-running-a-day-on-delta), project in [`databricks/`](databricks).
+
+| Loader, after ten days (29,095 events sent) | Rows | Events missing | Duplicate rows |
+|---|---:|---:|---:|
+| `INSERT … read_files` by file name | 32,149 | 2,625 | 5,679 |
+| `COPY INTO` | 30,361 | **1,638** | 2,904 |
+| `COPY INTO` + `MERGE` | 27,457 | **1,638** | 0 |
+| Auto Loader | 30,361 | **1,638** | 2,904 |
+| Auto Loader, `allowOverwrites` | 33,090 | 0 | 3,995 |
+| Auto Loader, `allowOverwrites` + `MERGE` | 29,095 | 0 | 0 |
+
+| Re-running one day of a 365-day Delta table | Days left |
+|---|---:|
+| `INSERT OVERWRITE` | 1 of 365; `RESTORE` brought back 365 |
+| `INSERT OVERWRITE … PARTITION (activity_date)` | 1 of 365 |
+| `REPLACE WHERE activity_date = …` | 365 |
+| `REPLACE USING (activity_date)` | 365 |
+| `SET spark.sql.sources.partitionOverwriteMode` | not available on a SQL warehouse |
+
 ## Decisions
 
 - **Snapshot the source, not a staging model.** The snapshot is the only record of history, so it keeps exactly what arrived. Cleaning happens downstream, where it can be changed and rebuilt.
@@ -155,9 +178,10 @@ dbt/                the dbt project: staging, snapshots, marts, tests; models/ai
 airflow/            the DAGs and the backfill harness
 quality/            the data-quality harness; dbt/models/quality holds the checks
 spark/              the PySpark job and its three experiments
+databricks/         six loaders on a Unity Catalog volume, and a re-run on Delta
 scripts/            warehouse.py (load + replay + build), measure.py, mutants.py
 results/            published measurements; CI checks them
-tests/              the generator's rules (pytest)
+tests/              the generator's rules, the DAGs, the recorded Databricks run (pytest)
 ```
 
 ## Licence

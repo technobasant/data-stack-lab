@@ -153,3 +153,25 @@ jobs:
         run: uv run python -m datagen --scale lab --seed 7 --out data
       - name: Run the three experiments; the published counts, exactly
         run: uv run python spark/run.py --check
+
+  # The Databricks project needs a workspace, so CI cannot re-run it. It checks the part
+  # that needs none: the deliveries and each loader's outcome predicted from the documented
+  # semantics, exactly. tests/test_databricks.py (in `checks`) holds the recorded workspace
+  # run to that prediction.
+  databricks:
+    name: Databricks, six loaders (the prediction)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync --locked
+      - name: Generate the dataset
+        run: uv run python -m datagen --scale lab --seed 7 --out data
+      - name: Build the deliveries and predict each loader; the published plan, exactly
+        run: uv run python databricks/run.py --plan --check

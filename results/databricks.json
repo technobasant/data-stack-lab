@@ -1,0 +1,82 @@
+{
+  "databricks_sql": "2026.39",
+  "loading": {
+    "insert_by_name": {
+      "rows": 32149,
+      "events": 26470,
+      "missing_events": 2625,
+      "duplicate_rows": 5679,
+      "unexpected_events": 0
+    },
+    "copy_into": {
+      "rows": 30361,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 2904,
+      "unexpected_events": 0
+    },
+    "copy_into_merge": {
+      "rows": 27457,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 0,
+      "unexpected_events": 0
+    },
+    "auto_loader": {
+      "rows": 30361,
+      "events": 27457,
+      "missing_events": 1638,
+      "duplicate_rows": 2904,
+      "unexpected_events": 0
+    },
+    "auto_loader_overwrites": {
+      "rows": 33090,
+      "events": 29095,
+      "missing_events": 0,
+      "duplicate_rows": 3995,
+      "unexpected_events": 0
+    },
+    "auto_loader_merge": {
+      "rows": 29095,
+      "events": 29095,
+      "missing_events": 0,
+      "duplicate_rows": 0,
+      "unexpected_events": 0
+    }
+  },
+  "matches_prediction": true,
+  "rerun_day": "2026-09-15",
+  "rerun": {
+    "before": {
+      "days": 365,
+      "rows": 333082
+    },
+    "rows_rewritten": 1070,
+    "set_partition_overwrite_mode": "CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION",
+    "insert_overwrite": {
+      "days": 1,
+      "rows": 1070
+    },
+    "insert_overwrite_then_restore": {
+      "days": 365,
+      "rows": 333082
+    },
+    "insert_overwrite_partition": {
+      "days": 1,
+      "rows": 1070
+    },
+    "replace_where": {
+      "days": 365,
+      "rows": 333082
+    },
+    "replace_where_wrong_day": {
+      "error": "DELTA_REPLACE_WHERE_MISMATCH.INVARIANT_VIOLATION",
+      "days": 365,
+      "rows": 333082
+    },
+    "replace_using": {
+      "days": 365,
+      "rows": 333082
+    }
+  }
+}

@@ -14,6 +14,7 @@ file under [`results/`](results) that CI regenerates and compares. Runs were mad
 | Warehouse | DuckDB 1.5.6, one file (`data/warehouse.duckdb`) |
 | Generator | NumPy 2.5.4, PyArrow 26.0.0 |
 | Airflow | Apache Airflow 3.3.2 (the `airflow` dependency group), SQLite metadata database |
+| Databricks | Free Edition: Databricks SQL 2026.39 on the serverless Starter Warehouse (2X-Small), serverless Lakeflow pipelines (run on 2026-10-19) |
 
 Only the timings depend on the host. Every other figure is a count over seeded data
 and is identical on any machine; CI (Ubuntu) reproduces the files byte for byte.
@@ -350,3 +351,94 @@ takes most of an hour. A full scan of the September AQE-off output took 11.8 s a
 files cost far more (one request each). The rollup is small, so absolute times are
 seconds; the counts are the result, and they follow from Spark's partitioning rules
 rather than from this machine.
+
+## Databricks: loading files that change, re-running a day on Delta
+
+Source: [`results/databricks.json`](results/databricks.json), written by
+[`databricks/run.py`](databricks/run.py) in one run on 2026-10-19 on Databricks Free
+Edition: Databricks SQL 2026.39 on the serverless Starter Warehouse (2X-Small), Unity
+Catalog, a serverless Lakeflow pipeline for Auto Loader, driven from the host above with
+databricks-sql-connector 4.6.0 and databricks-sdk 0.153.0. The workspace run cannot be
+repeated in CI. What CI does check: [`results/databricks-plan.json`](results/databricks-plan.json),
+the deliveries and every loader's outcome predicted from the documented semantics
+(`run.py --plan --check`, exact), and that the recorded run equals the prediction
+(`tests/test_databricks.py`). Times are in
+[`results/databricks-observed.json`](results/databricks-observed.json), never compared.
+
+**Deliveries.** Events received 1–10 September, each event once (its first delivery), one
+file a day, 29,095 events in all. Files are written with UTC timestamps
+(`isAdjustedToUTC`), so they read as `TIMESTAMP`. Four incidents:
+
+| Day | Incident | Size |
+|---|---|---:|
+| 2 Sep | the day's file sent again as `events-2026-09-02-resent.parquet` | 2,904 events |
+| 4 Sep | `events-2026-09-04.parquet` holds the first 40% of the day | 1,091 of 2,729 |
+| 5 Sep | the complete file re-sent under the same name, overwriting it | 2,729 |
+| 6 Sep | every third event held back, delivered 8 Sep as `events-2026-09-06-late.parquet` | 987 |
+| 9 Sep | the load runs twice; nothing new between the runs | 2,775 in the day |
+
+**Loaders,** run in this order after each delivery:
+
+- `insert_by_name`: `INSERT INTO … SELECT … FROM read_files('…/events-<run day>*.parquet')`.
+- `copy_into`: `COPY INTO … FROM '<landing folder>' FILEFORMAT = PARQUET`.
+- `copy_into_merge`: `MERGE` from `copy_into`, first delivery per `event_id`, insert when
+  not matched.
+- `auto_loader` and `auto_loader_overwrites`: two streaming tables over the landing folder
+  (`read_files` in `STREAM`, i.e. Auto Loader), the second with
+  `cloudFiles.allowOverwrites = true`, in one Lakeflow pipeline (triggered, serverless,
+  automatic retries off) updated once per run.
+- `auto_loader_merge`: the same `MERGE`, from `auto_loader_overwrites`.
+
+**Scoring.** Each final table against the 29,095 expected `event_id`s: rows, distinct
+events, expected events absent, and rows minus distinct events. No loader produced an
+event that was not sent.
+
+| Loader | Rows | Events | Missing | Duplicate rows |
+|---|---:|---:|---:|---:|
+| `insert_by_name` | 32,149 | 26,470 | 2,625 | 5,679 |
+| `copy_into` | 30,361 | 27,457 | 1,638 | 2,904 |
+| `copy_into_merge` | 27,457 | 27,457 | 1,638 | 0 |
+| `auto_loader` | 30,361 | 27,457 | 1,638 | 2,904 |
+| `auto_loader_overwrites` | 33,090 | 29,095 | 0 | 3,995 |
+| `auto_loader_merge` | 29,095 | 29,095 | 0 | 0 |
+
+Accounting: 1,638 = the 60% of 4 September the truncated upload lost (2,729 − 1,091);
+2,625 = 1,638 + the late 987; 2,904 = the resent file; 5,679 = 2,904 + 9 September loaded
+twice (2,775); 3,995 = 2,904 + the first 1,091 rows read again with the corrected file.
+
+**The semantics relied on.** `COPY INTO`: "Files in the source location that have already
+been loaded are skipped. This is true even if the files have been modified since they
+were loaded" ([docs](https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into)).
+Auto Loader: "With the default setting (`cloudFiles.allowOverwrites` = `false`), files are
+processed exactly once"; with it set to `true`, "Auto Loader is guaranteed to process the
+latest version of the file"
+([FAQ](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/faq)).
+
+**Re-running one day on Delta.** `rollup`: the Spark project's rollup (first delivery per
+event, then events and distinct users per UTC day, account and event type) as a Delta table
+`PARTITIONED BY (activity_date)`: 365 days, 333,082 rows. `rollup_one_day`: 15 September
+alone, 1,070 rows. Each write-back starts from a `DEEP CLONE` of `rollup`.
+
+| Statement | Days after | Rows after |
+|---|---:|---:|
+| `SET spark.sql.sources.partitionOverwriteMode = dynamic` | `CONFIG_NOT_AVAILABLE` | |
+| `INSERT OVERWRITE t SELECT * FROM rollup_one_day` | 1 | 1,070 |
+| then `RESTORE TABLE t TO VERSION AS OF 0` | 365 | 333,082 |
+| `INSERT OVERWRITE t PARTITION (activity_date) SELECT * FROM rollup_one_day` | 1 | 1,070 |
+| `INSERT INTO t REPLACE WHERE activity_date = '2026-09-15' SELECT …` | 365 | 333,082 |
+| `REPLACE WHERE activity_date = '2026-09-16'` with 15 September's rows | refused: `DELTA_REPLACE_WHERE_MISMATCH.INVARIANT_VIOLATION` | 333,082 |
+| `INSERT INTO t REPLACE USING (activity_date) SELECT …` | 365 | 333,082 |
+
+**Observed.** Over the 11 runs the Lakeflow pipeline's updates took 891 s in total, the
+`INSERT`, `COPY INTO` and each `MERGE` 23–26 s each in total. Free Edition allows one
+active pipeline per type, and a streaming table created with `CREATE STREAMING TABLE`
+is a pipeline of its own; with two such tables, refreshes were refused for minutes at a
+time ("You've hit the limit for serverless compute for free usage"), which is why both
+streaming tables share one pipeline.
+
+**Limits.** Small files (about 3,000 events a day) and one workspace on Free Edition. The
+counts follow from the loaders' documented semantics and match a prediction made without
+the workspace; they do not depend on scale. Timings do, and are not compared. File
+notification mode, `cloudFiles.backfillInterval` and Auto Loader's handling of files
+changed mid-write were not tested.
+

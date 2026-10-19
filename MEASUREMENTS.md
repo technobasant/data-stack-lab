@@ -21,8 +21,12 @@ tiers:
    Databricks workspace), and
    [`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json) (needs a
    real `airflow standalone` scheduler, not `dag.test()`). `tests/test_databricks.py`
-   holds the first of these to the CI-checked prediction; the other two are not
-   checked against anything and could go stale.
+   (part of `pytest -q`, which CI runs on every push) checks the first of these
+   against `results/databricks-plan.json`'s prediction, and the second against
+   `results/dbt-scd2.json` (itself regenerated and checked, separately, by the dbt
+   job), so neither can silently drift from tier 1 even though neither is
+   regenerated itself. `results/airflow-scheduler-run.json` is not checked against
+   anything and could go stale.
 3. **Timings, observed on one run, never compared**: the dbt Core/v2 end-to-end
    seconds in [Timing](#6-timing) below, the Spark write times in
    [`results/spark-observed.json`](results/spark-observed.json), and the Databricks

@@ -278,9 +278,13 @@ class Workspace:
             libraries=[pipelines.PipelineLibrary(file=pipelines.FileLibrary(path=PIPELINE_SOURCE))],
         ).pipeline_id
 
-    def update_pipeline(self, pipeline_id: str, attempts: int = 20) -> None:
+    def update_pipeline(
+        self, pipeline_id: str, attempts: int = 20, timeout_s: float = 1800
+    ) -> None:
         """One triggered update: each streaming table reads the files it has not processed.
-        Retried here, not by the pipeline, when Free Edition refuses compute."""
+        Retried here, not by the pipeline, when Free Edition refuses compute. Each update is
+        given up to `timeout_s` (default 30 minutes) to reach a terminal state; past that,
+        this raises instead of polling forever."""
         from databricks.sdk.errors import ResourceConflict
 
         api = self.client.pipelines
@@ -290,11 +294,17 @@ class Workspace:
             except ResourceConflict:  # an update is still running; let it finish
                 time.sleep(30)
                 continue
+            deadline = time.monotonic() + timeout_s
             while (state := api.get_update(pipeline_id, update_id).update.state.value) not in (
                 "COMPLETED",
                 "FAILED",
                 "CANCELED",
             ):
+                if time.monotonic() > deadline:
+                    raise RuntimeError(
+                        f"pipeline update {update_id} did not reach a terminal state within "
+                        f"{timeout_s / 60:.0f} minutes (last seen: {state!r})"
+                    )
                 time.sleep(10)
             if state == "COMPLETED":
                 return

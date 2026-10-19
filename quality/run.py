@@ -22,8 +22,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
+import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -72,7 +74,7 @@ BATCH_CHECKS = ("volume_near_baseline", "platform_share_near_baseline", "matches
 
 
 def dbt_command() -> list[str]:
-    return os.environ.get("DBT", "").split() or [str(Path(sys.executable).with_name("dbt"))]
+    return shlex.split(os.environ.get("DBT", "")) or [str(Path(sys.executable).with_name("dbt"))]
 
 
 def clean_day(con: duckdb.DuckDBPyConnection, day: date) -> None:
@@ -150,26 +152,38 @@ def deliver(con: duckdb.DuckDBPyConnection, day: date, held: list) -> None:
 
 
 def check(warehouse: Path) -> tuple[bool, set[str], set[str]]:
-    """Run the day's checks. Returns (contract held, failed tests, warnings)."""
-    run = subprocess.run(
-        [
-            *dbt_command(),
-            "build",
-            "--select",
-            "tag:quality",
-            "--vars",
-            '{"quality_module": true}',
-            "--project-dir",
-            ".",
-            "--profiles-dir",
-            ".",
-        ],  # fmt: skip
-        cwd=ROOT / "dbt",
-        env={**os.environ, "DUCKDB_PATH": str(warehouse)},
-        capture_output=True,
-        text=True,
-    )
-    results = json.loads((ROOT / "dbt" / "target" / "run_results.json").read_text())["results"]
+    """Run the day's checks. Returns (contract held, failed tests, warnings).
+
+    Each invocation gets its own --target-path, so a run that crashes before writing
+    run_results.json is never mistaken for the previous day's (passing) one."""
+    with tempfile.TemporaryDirectory() as target_path:
+        run = subprocess.run(
+            [
+                *dbt_command(),
+                "build",
+                "--select",
+                "tag:quality",
+                "--vars",
+                '{"quality_module": true}',
+                "--project-dir",
+                ".",
+                "--profiles-dir",
+                ".",
+                "--target-path",
+                target_path,
+            ],  # fmt: skip
+            cwd=ROOT / "dbt",
+            env={**os.environ, "DUCKDB_PATH": str(warehouse)},
+            capture_output=True,
+            text=True,
+        )
+        run_results = Path(target_path) / "run_results.json"
+        if not run_results.exists():
+            raise SystemExit(
+                f"dbt produced no run_results.json (exit {run.returncode}):\n"
+                f"{run.stdout[-2000:]}\n{run.stderr[-2000:]}"
+            )
+        results = json.loads(run_results.read_text())["results"]
     model_ok, failed, warned = True, set(), set()
     for r in results:
         kind, _, name = r["unique_id"].split(".")[:3]
@@ -179,8 +193,10 @@ def check(warehouse: Path) -> tuple[bool, set[str], set[str]]:
             failed.add(name)
         elif kind == "test" and r["status"] == "warn":
             warned.add(name)
-    if not results:
-        raise SystemExit(f"dbt produced no results:\n{run.stdout[-2000:]}")
+    if run.returncode != 0 and not failed:
+        # dbt exited non-zero but no test was recorded as failed: do not treat the
+        # build as having silently succeeded.
+        model_ok = False
     return model_ok, failed, warned
 
 

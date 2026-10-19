@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -69,7 +70,7 @@ def land_files() -> None:
 
 
 def dbt(*args: str, warehouse: Path) -> None:
-    command = os.environ.get("DBT", "").split() or [str(Path(sys.executable).with_name("dbt"))]
+    command = shlex.split(os.environ.get("DBT", "")) or [str(Path(sys.executable).with_name("dbt"))]
     run = subprocess.run(
         [*command, *args, "--project-dir", ".", "--profiles-dir", "."],
         cwd=os.environ["DBT_DIR"],

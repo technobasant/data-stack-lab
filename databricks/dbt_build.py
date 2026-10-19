@@ -10,8 +10,12 @@ results/dbt-scd2.json.
 
     python databricks/dbt_build.py      # writes results/dbt-databricks.json
 
-dbt runs as `uvx --from dbt-databricks==1.12.7 dbt` (set DBT to override): the adapter
-pins an older Databricks SDK than the loader project, so it runs in its own environment.
+dbt runs as `uvx --from dbt-databricks==1.12.7 --with dbt-core==1.12.5 dbt` (set DBT to
+override): the adapter pins an older Databricks SDK than the loader project, so it runs
+in its own environment. dbt-core is pinned explicitly rather than left to whatever uvx
+resolves, because dbt-databricks 1.12.7 does not pin an exact dbt-core version itself;
+1.12.5 is what it resolved to when this was last checked (`uvx --from
+dbt-databricks==1.12.7 dbt --version`).
 Needs DATABRICKS_HOST, DATABRICKS_TOKEN and DATABRICKS_HTTP_PATH.
 """
 
@@ -22,6 +26,7 @@ import os
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -45,15 +50,23 @@ CHANGES = [
 ]
 
 
+DEFAULT_DBT = "uvx --from dbt-databricks==1.12.7 --with dbt-core==1.12.5 dbt"
+
+
 def dbt(*args: str) -> tuple[float, dict]:
-    command = shlex.split(os.environ.get("DBT", "uvx --from dbt-databricks==1.12.7 dbt"))
+    """Run one dbt invocation with its own --target-path, so a crash that leaves no
+    run_results.json is never mistaken for a previous invocation's (passing) one."""
+    command = shlex.split(os.environ.get("DBT", DEFAULT_DBT))
     started = time.perf_counter()
-    run = subprocess.run(
-        [*command, *args, "--target", "databricks", "--project-dir", ".", "--profiles-dir", "."],
-        cwd=DBT_DIR, capture_output=True, text=True,
-    )  # fmt: skip
-    took = round(time.perf_counter() - started, 1)
-    results = json.loads((DBT_DIR / "target" / "run_results.json").read_text())["results"]
+    with tempfile.TemporaryDirectory() as target_path:
+        run = subprocess.run(
+            [*command, *args, "--target", "databricks", "--project-dir", ".",
+             "--profiles-dir", ".", "--target-path", target_path],
+            cwd=DBT_DIR, capture_output=True, text=True,
+        )  # fmt: skip
+        took = round(time.perf_counter() - started, 1)
+        run_results = Path(target_path) / "run_results.json"
+        results = json.loads(run_results.read_text())["results"] if run_results.exists() else []
     statuses: dict = {}
     for r in results:
         kind = r["unique_id"].split(".")[0]

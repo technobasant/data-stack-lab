@@ -16,8 +16,8 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.14"]
-# The Airflow module only: `uv sync --group airflow`. Kept out of the default install so
-# the dbt module does not pull in a scheduler.
+# The Airflow project only: `uv sync --group airflow`. Kept out of the default install so
+# the dbt project does not pull in a scheduler.
 airflow = ["apache-airflow==3.3.2"]
 # The Spark project only: `uv sync --group spark`. Needs Java 17 or later.
 spark = ["pyspark==4.2.0"]

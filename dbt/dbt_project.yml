@@ -16,8 +16,6 @@ models:
     marts:
       +materialized: table
       +schema: marts
-    # The Airflow module's incremental models. Off unless Airflow turns them on, so the
-    # dbt module builds exactly what it always did.
     # The data-quality project: one day's delivery at a time. Off unless its harness
     # turns it on.
     quality:
@@ -25,6 +23,8 @@ models:
       +schema: quality
       +tags: ["quality"]
       +enabled: "{{ var('quality_module', false) }}"
+    # The Airflow project's incremental models. Off unless Airflow turns them on, so the
+    # dbt project builds exactly what it always did.
     airflow:
       +materialized: incremental
       +incremental_strategy: delete+insert

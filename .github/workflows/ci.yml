@@ -37,7 +37,7 @@ jobs:
       - name: Audit the workflows (zizmor)
         run: uvx zizmor@1.30.1 --offline --persona=regular .github/workflows
 
-  # The whole dbt module at lab scale on both dbt engines: 13 snapshot loads, every
+  # The whole dbt project at lab scale on both dbt engines: 13 snapshot loads, every
   # model, data test and unit test; then the published figures must come out exactly
   # (results/dbt-scd2.json) and every deliberate break must fail the build.
   dbt:
@@ -85,9 +85,10 @@ jobs:
             dbt/target/catalog.json
           retention-days: 30
 
-  # The Airflow module: September backfilled through the real DAGs three ways (in order,
-  # a file that lands late and is re-run, and Airflow 3's default "@daily"), every
-  # incremental table scored against every event that arrived. Exact figures checked.
+  # The Airflow project: September backfilled through the real DAGs four ways (in order,
+  # a file that lands late and is re-run, newest day first, and Airflow 3's default
+  # "@daily"), every incremental table scored against every event that arrived. Exact
+  # figures checked.
   airflow:
     name: Airflow 3.3 backfill
     needs: checks
@@ -105,7 +106,7 @@ jobs:
         run: uv run python -m datagen --scale lab --seed 7 --out data
       - name: The DAGs load, and each schedule gives the window the results rely on
         run: uv run pytest -q tests/test_dags.py
-      - name: Backfill September three ways; the published figures, exactly
+      - name: Backfill September four ways; the published figures, exactly
         run: uv run python airflow/backfill.py --check
 
   # The data-quality project: a month of deliveries with nine injected defects, checked in

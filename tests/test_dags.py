@@ -1,5 +1,5 @@
 """The DAGs load, are wired as intended, and the two schedules give the run windows the
-Airflow module's results depend on. Skipped unless the `airflow` group is installed."""
+Airflow project's results depend on. Skipped unless the `airflow` group is installed."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def test_saas_daily_covers_the_day_that_just_ended(dags: dict) -> None:
 
 def test_default_daily_has_no_window(dags: dict) -> None:
     """Airflow 3's "@daily" is a CronTriggerTimetable. If this starts failing, the default
-    has changed and the Airflow module's default_cron results need re-running."""
+    has changed and the Airflow project's default_cron results need re-running."""
     from airflow.timetables.trigger import CronTriggerTimetable
 
     assert type(dags["saas_daily_default_cron"].timetable).__name__ == "CronTriggerTimetable"

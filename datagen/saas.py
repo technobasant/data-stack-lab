@@ -1,6 +1,6 @@
 """Seeded synthetic data for one fictional B2B subscription SaaS.
 
-Every module in this repository runs on this dataset, so figures line up across
+Every project in this repository runs on this dataset, so figures line up across
 tools. Nothing in it is real: people, companies and e-mail addresses are generated,
 and every domain sits under the reserved `.example` top-level domain.
 

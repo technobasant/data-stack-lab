@@ -1,1 +1,1 @@
-"""Seeded synthetic data shared by every module; see datagen/saas.py."""
+"""Seeded synthetic data shared by every project; see datagen/saas.py."""

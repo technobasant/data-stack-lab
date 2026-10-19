@@ -37,7 +37,7 @@ and is identical on any machine; CI (Ubuntu) reproduces the files byte for byte.
 
 Rows: 13 account extracts (703 accounts on 1 Oct 2025, growing to 1,000), 4 plans,
 11,963 users, 5,048 invoices, 913,388 delivered events (906,015 distinct), 2,291
-account changes in the truth file.
+account changes in the truth file (including 1,000 signups).
 
 ## How the warehouse is built
 
@@ -173,9 +173,11 @@ observation, not a benchmark.
 - One price per plan, no seats, discounts, proration or refunds.
 - The first-version stretch assumes an account looked, before its first extract, as
   it did at that extract. That is an assumption, labelled by `version_number = 1`.
-- So far only DuckDB. The project is written to run on Snowflake, Databricks and
-  BigQuery through their adapters; those runs belong to those modules and are not
-  claimed here.
+- Not DuckDB only any more: this dbt project also builds on Databricks, after one
+  change (contract types `varchar` → `string`); see
+  [The dbt project on Databricks](#databricks-loading-files-that-change-re-running-a-day-on-delta)
+  below. It is written to run on Snowflake and BigQuery too, through their adapters;
+  those runs belong to those projects and are not claimed here.
 
 ## Airflow: incremental loads and backfills
 
@@ -254,7 +256,9 @@ defect applied: rows chosen for a defect are every 20th (nulls), 33rd (new event
 or 50th (orphan accounts) by event id, or every third for the late third. Every delivered
 row carries a label: bad if the defect made it wrong (a null key, a shifted timestamp, an
 unknown account), good otherwise. Rows a defect removed (the truncated upload, the
-silent platform, the late third) are counted separately as never delivered.
+silent platform, the late third) are counted separately as missing from the day's
+delivery; the late third's rows are not lost, only late (delivered two days on, with
+29 September's own events).
 
 **Checks** ([`dbt/models/quality/`](dbt/models/quality),
 [`dbt/tests/generic/quality_checks.sql`](dbt/tests/generic/quality_checks.sql)). The
@@ -290,7 +294,7 @@ fixing it.
 | Bad rows delivered | 3,198 | 3,198 |
 | Bad rows promoted | 0 | 87 |
 | Good rows not promoted | 19,545 | 12,865 |
-| Rows never delivered | 3,362 | 3,362 |
+| Rows missing from the day's delivery (1,040 of them delivered two days late) | 3,362 | 3,362 |
 | Days held | 8 | 5 |
 | Clean days (20) with a failure or a warning | 0 | 0 |
 

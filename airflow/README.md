@@ -1,6 +1,6 @@
 # Airflow: daily incremental loads, late files and backfills
 
-The Airflow module of [data-stack-lab](..). A daily DAG lands one day of event files
+The Airflow project of [data-stack-lab](..). A daily DAG lands one day of event files
 into the warehouse and runs three dbt incremental models that differ in one line, how
 each decides what is new. September 2026 is then backfilled four ways, and every
 table is scored against every event that arrived. Method and figures:

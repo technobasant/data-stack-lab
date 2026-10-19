@@ -13,23 +13,23 @@ erDiagram
     dim_date ||--o{ fct_daily_usage : date_key
     dim_plan ||--o{ dim_account : plan_id
     dim_account {
-        varchar account_key PK "one per version"
+        string account_key PK "one per version"
         bigint account_id "shared by every version"
         int version_number
-        varchar plan_name
-        varchar status
+        string plan_name
+        string status
         timestamp valid_from
         timestamp valid_to "exclusive; 9999-12-31 if current"
         boolean is_current
     }
     fct_invoices {
-        varchar invoice_id PK
-        varchar account_key FK
+        string invoice_id PK
+        string account_key FK
         int invoice_date_key FK
         decimal amount_usd
     }
     fct_daily_usage {
-        varchar account_key FK
+        string account_key FK
         date activity_date
         int date_key FK
         bigint events
@@ -75,5 +75,8 @@ uv run python scripts/warehouse.py   # 13 snapshot loads, then dbt build
 cd dbt && DUCKDB_PATH=../data/warehouse.duckdb uv run dbt docs generate --profiles-dir .
 ```
 
-`profiles.yml` has one target, `duckdb`. The Snowflake, Databricks and BigQuery
-modules add theirs and run this same project.
+`profiles.yml` has two targets: `duckdb` (the default, and the only one CI builds this
+project on) and `databricks` ([`databricks/dbt_build.py`](../databricks/dbt_build.py)
+builds this project on a Databricks SQL warehouse; see
+[databricks/README.md](../databricks/README.md)). The Snowflake and BigQuery projects
+would add their own targets and run this same project.

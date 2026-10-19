@@ -1,5 +1,5 @@
 # Targets for the same project. Only duckdb runs in CI; the others are filled in by the
-# modules that need them (snowflake/, databricks/, bigquery/).
+# projects that need them (snowflake/, databricks/, bigquery/).
 saas:
   target: duckdb
   outputs:

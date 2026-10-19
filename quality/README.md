@@ -42,7 +42,7 @@ Over the month:
 | Bad rows promoted, of 3,198 delivered | **0** | 87 |
 | Good rows not promoted | 19,545 | 12,865 |
 | Days held for a person | 8 | 5 |
-| Rows never delivered (not detectable as bad rows) | 3,362 | 3,362 |
+| Rows missing from the day's delivery (not detectable as bad rows; 1,040 of them delivered two days late) | 3,362 | 3,362 |
 | Clean days with an alarm | 0 of 20 | 0 of 20 |
 
 ## What it shows
@@ -50,8 +50,10 @@ Over the month:
 - **Missing data needs different checks from wrong data.** The truncated upload, the
   silent platform and the late third left no bad rows to find. Only the manifest, the
   volume band and the per-platform share saw them.
-- **A total can hide a loss that a share shows.** iOS going silent cut the day's
-  volume by 19%, inside the band; it moved iOS's own share from about 18% to 0.
+- **A total can hide a loss that a share shows.** iOS going silent left the day's volume
+  11.7% below the median of the last seven accepted days (2,613 vs 2,958), inside the
+  30% volume band; it moved iOS's own share from about 18% to 0, which the
+  per-platform-share check caught.
 - **A fixed band is a coin toss at its edge.** The late third was 29.6% below one
   policy's baseline and 30.2% below the other's, because the two policies had held
   different earlier days. The 30% band missed it once and caught it once.

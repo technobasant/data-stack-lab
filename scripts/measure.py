@@ -73,7 +73,8 @@ def measure() -> dict:
         """
         create temp view attributed as
         select f.invoice_id, f.amount_usd, billed.plan_name as type2_plan,
-               cur.plan_name as type1_plan, p.plan_name as true_plan
+               cur.plan_name as type1_plan, cur.status as current_status,
+               p.plan_name as true_plan
         from marts.fct_invoices f
         join marts.dim_account billed on billed.account_key = f.account_key
         join marts.dim_account cur on cur.account_id = f.account_id and cur.is_current
@@ -121,6 +122,30 @@ def measure() -> dict:
         )
     revenue["by_plan"] = by_plan
 
+    # Type 2 matches the truth on every invoice, so "billed on" below is also the truth.
+    # Revenue billed on one plan and reported on another under Type 1, largest flows first.
+    revenue["wrong_plan_flows"] = rows(
+        con,
+        """
+        select type2_plan as billed_plan, type1_plan as current_plan,
+               count(*) as invoices, sum(amount_usd)::double as revenue_usd
+        from attributed
+        where type2_plan <> type1_plan
+        group by 1, 2
+        order by revenue_usd desc
+        """,
+    )
+    # Of the revenue Type 1 moves, how much belongs to accounts that have since churned
+    # (and so keep their last plan: it was a plan change before the churn that moved it).
+    revenue["churned_wrong_plan"] = one(
+        con,
+        """
+        select count(*) as invoices, sum(amount_usd)::double as revenue_usd
+        from attributed
+        where type2_plan <> type1_plan and current_status = 'churned'
+        """,
+    )
+
     # 2. Which of the year's changes did a monthly extract ever show? A change is seen if
     # some version starts at its exact time (the timestamp strategy dates versions from
     # updated_at). Signups are new accounts, not changes, so they are left out.
@@ -142,6 +167,58 @@ def measure() -> dict:
         """,
     )
     coverage["seen_share"] = round(coverage["seen"] / coverage["changes"], 4)
+
+    # The same question, by the kind of change, in the order MEASUREMENTS.md reports them.
+    coverage["by_change"] = rows(
+        con,
+        f"""
+        with changes as (
+            select account_id, changed_at, change from history
+            where change <> 'signup'
+              and changed_at >= '{PERIOD[0]}' and changed_at < '{PERIOD[1]}'
+        )
+        select c.change,
+               count(*) as made,
+               count(*) filter (where v.account_id is null) as never_seen
+        from changes c
+        left join snapshots.snap_accounts v
+          on v.account_id = c.account_id and v.dbt_valid_from = c.changed_at
+        group by 1
+        order by case c.change
+            when 'upgrade' then 1 when 'downgrade' then 2 when 'trial_ended' then 3
+            when 'churn' then 4 when 'moved' then 5 end
+        """,
+    )
+    # What a missed change looked like by the next extract: the next change the account
+    # made before any snapshot caught up, which is what the snapshot actually recorded
+    # in its place.
+    coverage["missed_replaced_by"] = rows(
+        con,
+        f"""
+        with changes as (
+            select account_id, changed_at, change,
+                   row_number() over (partition by account_id order by changed_at) as rn
+            from history
+            where change <> 'signup'
+        ),
+        period_changes as (
+            select * from changes
+            where changed_at >= '{PERIOD[0]}' and changed_at < '{PERIOD[1]}'
+        ),
+        missed as (
+            select c.account_id, c.change, c.rn
+            from period_changes c
+            left join snapshots.snap_accounts v
+              on v.account_id = c.account_id and v.dbt_valid_from = c.changed_at
+            where v.account_id is null
+        )
+        select n.change as replaced_by, m.change as missed_change, count(*) as changes
+        from missed m
+        join changes n on n.account_id = m.account_id and n.rn = m.rn + 1
+        group by 1, 2
+        order by 1, 2
+        """,
+    )
 
     # 3. Usage: every deduplicated event against the plan it truly happened on.
     usage = one(
@@ -205,13 +282,24 @@ def summary(m: dict) -> str:
             f"    {p['plan']:<11} true ${p['true_usd']:>9,.0f}   Type 1 ${p['type1_usd']:>9,.0f}"
             + delta
         )
+    lines.append(
+        f"  wrong-plan flows: {len(r['wrong_plan_flows'])}; of those, churned accounts carry "
+        f"${r['churned_wrong_plan']['revenue_usd']:,.0f} ({r['churned_wrong_plan']['invoices']} "
+        "invoices)"
+    )
     lines += [
         f"changes in the year {c['changes']}, seen by monthly snapshots {c['seen']} "
         f"({c['seen_share']:.1%}); trial endings seen {c['trial_endings_seen']}/"
         f"{c['trial_endings']}",
-        f"events {u['events']:,}: wrong plan Type 2 {u['type2_share_wrong']:.2%}, "
-        f"Type 1 {u['type1_share_wrong']:.2%}",
     ]
+    for row in c["by_change"]:
+        lines.append(
+            f"    {row['change']:<12} made {row['made']:>3}  never seen {row['never_seen']:>2}"
+        )
+    lines.append(
+        f"events {u['events']:,}: wrong plan Type 2 {u['type2_share_wrong']:.2%}, "
+        f"Type 1 {u['type1_share_wrong']:.2%}"
+    )
     return "\n".join(lines)
 
 

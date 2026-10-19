@@ -45,14 +45,127 @@
         "type1_usd": 502464.0,
         "type1_vs_true": -0.0771
       }
-    ]
+    ],
+    "wrong_plan_flows": [
+      {
+        "billed_plan": "enterprise",
+        "current_plan": "business",
+        "invoices": 61,
+        "revenue_usd": 60939.0
+      },
+      {
+        "billed_plan": "business",
+        "current_plan": "team",
+        "invoices": 172,
+        "revenue_usd": 34228.0
+      },
+      {
+        "billed_plan": "business",
+        "current_plan": "enterprise",
+        "invoices": 121,
+        "revenue_usd": 24079.0
+      },
+      {
+        "billed_plan": "team",
+        "current_plan": "business",
+        "invoices": 274,
+        "revenue_usd": 13426.0
+      },
+      {
+        "billed_plan": "team",
+        "current_plan": "free",
+        "invoices": 194,
+        "revenue_usd": 9506.0
+      },
+      {
+        "billed_plan": "enterprise",
+        "current_plan": "team",
+        "invoices": 7,
+        "revenue_usd": 6993.0
+      },
+      {
+        "billed_plan": "team",
+        "current_plan": "enterprise",
+        "invoices": 38,
+        "revenue_usd": 1862.0
+      },
+      {
+        "billed_plan": "business",
+        "current_plan": "free",
+        "invoices": 6,
+        "revenue_usd": 1194.0
+      }
+    ],
+    "churned_wrong_plan": {
+      "invoices": 84,
+      "revenue_usd": 11366.0
+    }
   },
   "snapshot_coverage": {
     "changes": 570,
     "seen": 533,
     "trial_endings": 48,
     "trial_endings_seen": 47,
-    "seen_share": 0.9351
+    "seen_share": 0.9351,
+    "by_change": [
+      {
+        "change": "upgrade",
+        "made": 245,
+        "never_seen": 30
+      },
+      {
+        "change": "downgrade",
+        "made": 108,
+        "never_seen": 6
+      },
+      {
+        "change": "trial_ended",
+        "made": 48,
+        "never_seen": 1
+      },
+      {
+        "change": "churn",
+        "made": 142,
+        "never_seen": 0
+      },
+      {
+        "change": "moved",
+        "made": 27,
+        "never_seen": 0
+      }
+    ],
+    "missed_replaced_by": [
+      {
+        "replaced_by": "churn",
+        "missed_change": "upgrade",
+        "changes": 1
+      },
+      {
+        "replaced_by": "downgrade",
+        "missed_change": "trial_ended",
+        "changes": 1
+      },
+      {
+        "replaced_by": "downgrade",
+        "missed_change": "upgrade",
+        "changes": 1
+      },
+      {
+        "replaced_by": "trial_ended",
+        "missed_change": "upgrade",
+        "changes": 26
+      },
+      {
+        "replaced_by": "upgrade",
+        "missed_change": "downgrade",
+        "changes": 6
+      },
+      {
+        "replaced_by": "upgrade",
+        "missed_change": "upgrade",
+        "changes": 2
+      }
+    ]
   },
   "usage": {
     "events": 906015,

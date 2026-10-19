@@ -1,8 +1,36 @@
 # Measurements
 
-Every figure in the README comes from this file, and every figure here comes from a
-file under [`results/`](results) that CI regenerates and compares. Runs were made on
-2026-10-18.
+Every figure in the README comes from this file. The figures here fall into three
+tiers:
+
+1. **Regenerated and checked in CI**, from a fresh dataset, on every push
+   ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+   [`results/dbt-scd2.json`](results/dbt-scd2.json) (`scripts/measure.py --check`),
+   [`results/mutants-core.json`](results/mutants-core.json) and
+   [`results/mutants-v2.json`](results/mutants-v2.json) (`scripts/mutants.py --check`,
+   both dbt engines), [`results/airflow-backfill.json`](results/airflow-backfill.json)
+   (`airflow/backfill.py --check`), [`results/quality.json`](results/quality.json)
+   (`quality/run.py --check`), [`results/spark.json`](results/spark.json)
+   (`spark/run.py --check`), and
+   [`results/databricks-plan.json`](results/databricks-plan.json)
+   (`databricks/run.py --plan --check`, the locally-predicted part only). If any of
+   these figures differed from a fresh run, CI would fail.
+2. **Recorded once, from a run that needs a service or account CI does not have**, and
+   not regenerated since: [`results/databricks.json`](results/databricks.json) and
+   [`results/dbt-databricks.json`](results/dbt-databricks.json) (both need a
+   Databricks workspace), and
+   [`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json) (needs a
+   real `airflow standalone` scheduler, not `dag.test()`). `tests/test_databricks.py`
+   holds the first of these to the CI-checked prediction; the other two are not
+   checked against anything and could go stale.
+3. **Timings, observed on one run, never compared**: the dbt Core/v2 end-to-end
+   seconds in [Timing](#6-timing) below, the Spark write times in
+   [`results/spark-observed.json`](results/spark-observed.json), and the Databricks
+   loader and dbt-build seconds in
+   [`results/databricks-observed.json`](results/databricks-observed.json) and the dbt
+   section below. These depend on the host and are not claimed to be reproducible.
+
+Runs were made on 2026-10-18 unless stated otherwise.
 
 ## Environment
 
@@ -16,8 +44,9 @@ file under [`results/`](results) that CI regenerates and compares. Runs were mad
 | Airflow | Apache Airflow 3.3.2 (the `airflow` dependency group), SQLite metadata database |
 | Databricks | Free Edition: Databricks SQL 2026.39 on the serverless Starter Warehouse (2X-Small), serverless Lakeflow pipelines (run on 2026-10-19) |
 
-Only the timings depend on the host. Every other figure is a count over seeded data
-and is identical on any machine; CI (Ubuntu) reproduces the files byte for byte.
+Only the timings (tier 3) depend on the host. Every tier-1 figure is a count over
+seeded data and is identical on any machine; CI (Ubuntu) reproduces those files byte
+for byte. The tier-2 files were recorded on this host and are not reproduced anywhere.
 
 ## Dataset
 
@@ -69,8 +98,8 @@ Source: [`results/dbt-scd2.json`](results/dbt-scd2.json), `revenue`.
 
 Type 2 matched the truth on 5,048 of 5,048 invoices. Type 1 matched on 4,175, and
 put $152,227 (15.07%) of revenue on another plan. Revenue billed on one plan and
-reported on another under Type 1, largest flows first (computed from
-`marts.revenue_by_plan`):
+reported on another under Type 1, largest flows first (`revenue.wrong_plan_flows` in
+[`results/dbt-scd2.json`](results/dbt-scd2.json)):
 
 | Billed on | Type 1 reports under | Invoices | Revenue |
 |---|---|---:|---:|
@@ -83,13 +112,14 @@ reported on another under Type 1, largest flows first (computed from
 | team | enterprise | 38 | $1,862 |
 | business | free | 6 | $1,194 |
 
-Of the $152,227, $11,366 (84 invoices) belongs to accounts that have since churned.
-A churned account keeps its last plan, so churn alone moves nothing; those accounts
-changed plan before they left.
+Of the $152,227, $11,366 (84 invoices, `revenue.churned_wrong_plan`) belongs to
+accounts that have since churned. A churned account keeps its last plan, so churn
+alone moves nothing; those accounts changed plan before they left.
 
 ## 2. What monthly snapshots saw
 
-Source: `snapshot_coverage` and `model`.
+Source: `snapshot_coverage` (`model`, `by_change`, `missed_replaced_by`) in
+[`results/dbt-scd2.json`](results/dbt-scd2.json).
 
 A change is counted as seen if a snapshot version starts at its exact timestamp (the
 timestamp strategy dates versions from `updated_at`). Signups are new accounts, not
@@ -104,8 +134,9 @@ changes, and are left out.
 | country move | 27 | 0 |
 | **total** | **570** | **37** (6.5%) |
 
-What replaced the missed changes before the next extract: a trial ending (26), an
-upgrade (6 after a downgrade, 2 after an upgrade), a downgrade (2), churn (1).
+What replaced the missed changes before the next extract (`missed_replaced_by`): a
+trial ending (26), an upgrade (6 after a downgrade, 2 after an upgrade), a downgrade
+(2), churn (1).
 
 `dim_account` holds 1,521 versions of 1,000 accounts. 33 versions have the same plan,
 status and country as the version before: the account changed and changed back
@@ -306,7 +337,9 @@ Notes on the figures:
 - On 27 September the delivered count was 2,092. Under block the median of the last
   seven accepted days was 2,972 (29.6% above it, inside the 30% band); under quarantine,
   which had accepted 18 and 24 September, it was 2,997 (30.2%, outside). The difference
-  is which earlier days each policy had promoted.
+  is which earlier days each policy had promoted. The medians themselves are not stored
+  in `results/quality.json` (only `volume_near_baseline`'s pass or fail is, and CI checks
+  that); verified here from the run's own `quality_state.accepted_daily` table.
 - 29 September is counted as the late defect's consequence, not as a clean day.
 
 **Limits.** Synthetic events with no weekly or seasonal pattern, so the volume and share

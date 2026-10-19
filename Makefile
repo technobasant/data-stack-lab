@@ -25,7 +25,7 @@ SHELL := /usr/bin/env bash
 SCALE ?= lab
 SEED ?= 7
 
-.PHONY: setup data warehouse measure mutants docs all airflow quality spark databricks check verify clean
+.PHONY: setup data warehouse measure mutants docs all airflow airflow-scheduler quality spark databricks check verify clean
 
 setup:
 	uv sync
@@ -57,6 +57,11 @@ all: data warehouse
 airflow: data
 	uv sync --group airflow
 	uv run python airflow/backfill.py
+
+# The in-order backfill on a real scheduler (airflow standalone); not run in CI.
+airflow-scheduler: data
+	uv sync --group airflow
+	uv run python airflow/scheduler_run.py
 
 quality: data
 	uv run python quality/run.py

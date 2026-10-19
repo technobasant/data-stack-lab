@@ -20,13 +20,14 @@ tiers:
    [`results/dbt-databricks.json`](results/dbt-databricks.json) (both need a
    Databricks workspace), and
    [`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json) (needs a
-   real `airflow standalone` scheduler, not `dag.test()`). `tests/test_databricks.py`
+   real `airflow standalone` scheduler, not `dag.test()`; written by
+   [`airflow/scheduler_run.py`](airflow/scheduler_run.py)). `tests/test_databricks.py`
    (part of `pytest -q`, which CI runs on every push) checks the first of these
    against `results/databricks-plan.json`'s prediction, and the second against
    `results/dbt-scd2.json` (itself regenerated and checked, separately, by the dbt
    job), so neither can silently drift from tier 1 even though neither is
-   regenerated itself. `results/airflow-scheduler-run.json` is not checked against
-   anything and could go stale.
+   regenerated itself. `results/airflow-scheduler-run.json` records its own
+   comparison with the harness (`identical_to_in_order_dag_test`), but CI does not run it.
 3. **Timings, observed on one run, never compared**: the dbt Core/v2 end-to-end
    seconds in [Timing](#6-timing) below, the Spark write times in
    [`results/spark-observed.json`](results/spark-observed.json), and the Databricks
@@ -262,14 +263,19 @@ What the counts are made of:
 `tests/test_dags.py` pins both timetables: one-day windows for `saas_daily`, zero-length
 for the default, so a change in Airflow's default fails CI before it changes a result.
 
-**On a real scheduler.** The `in_order` scenario was also run once on `airflow
-standalone` (Airflow 3.3.2, SQLite, LocalExecutor) with `airflow backfill create
---dag-id saas_daily --from-date 2026-09-01 --to-date 2026-09-30 --max-active-runs 1`.
-All 30 backfill runs succeeded in 3 min 39 s, and all three tables matched the harness
-exactly. Unpausing the DAG also made the scheduler create a run for the latest
-interval, 17 October, which failed at `land` because no file exists for that day.
-Record: [`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json).
-That run is not repeated in CI.
+**On a real scheduler.** The `in_order` scenario also runs on `airflow standalone`
+(Airflow 3.3.2, SQLite, LocalExecutor) with `airflow backfill create --dag-id saas_daily
+--from-date 2026-09-01 --to-date 2026-09-30 --max-active-runs 1`, by
+[`airflow/scheduler_run.py`](airflow/scheduler_run.py) (`make airflow-scheduler`). All 30
+backfill runs succeeded, and all three tables matched the harness exactly, on the first
+run on 18 October and again on 19 October (3 min 39 s and 12 min 44 s; timings depend on
+the host). Unpausing the DAG also makes the scheduler create a run for the latest interval,
+which fails at `land` because no file exists for that day. The script queues the backfill
+before it starts the scheduler: SQLite takes one writer, and a backfill created while the
+scheduler was writing failed with `database is locked`, after which the scheduler's loop
+crashed on a run that had been rolled back. Record:
+[`results/airflow-scheduler-run.json`](results/airflow-scheduler-run.json). CI does not run
+it.
 
 **Limits.** One month, one file per day, no partial files: a file is either there or not.
 The late file is withheld whole and delivered whole. The backwards order is the

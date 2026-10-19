@@ -53,11 +53,12 @@ Of 89,508 distinct events that arrived in September, 2,291 arrived over an hour 
   still succeeded. The `land` task on that schedule read the day that had just begun,
   not the one that had just ended, which is why the other two lost 1 September.
 
-**On a real scheduler too.** The in-order scenario was also run once on
-`airflow standalone` with `airflow backfill create --dag-id saas_daily --from-date
-2026-09-01 --to-date 2026-09-30 --max-active-runs 1`: 30 of 30 runs succeeded and all
-three tables were identical to the harness's
-([`results/airflow-scheduler-run.json`](../results/airflow-scheduler-run.json)).
+**On a real scheduler too.** [`scheduler_run.py`](scheduler_run.py) runs the in-order
+scenario on `airflow standalone` with `airflow backfill create --dag-id saas_daily
+--from-date 2026-09-01 --to-date 2026-09-30 --max-active-runs 1`: 30 of 30 runs succeeded
+and all three tables were identical to the harness's
+([`results/airflow-scheduler-run.json`](../results/airflow-scheduler-run.json)). It queues
+the backfill before starting the scheduler, because SQLite takes one writer at a time.
 
 ## Running it
 
@@ -67,6 +68,7 @@ From the repository root, after `make data`:
 make airflow                                   # uv sync --group airflow, then the backfill
 uv run python airflow/backfill.py --check      # what CI runs: the published figures, exactly
 uv run --group airflow pytest -q tests/test_dags.py
+make airflow-scheduler                         # the in-order backfill on airflow standalone
 ```
 
 [`backfill.py`](backfill.py) gives each scenario its own DuckDB file under

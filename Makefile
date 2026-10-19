@@ -75,18 +75,17 @@ check:
 	uv run pytest -q
 
 # Every offline check CI runs (.github/workflows/ci.yml), job for job, against a fresh
-# dataset: lint, the generator/DAG tests, the dbt project rebuilt and compared, and the
-# airflow/quality/spark/databricks harnesses run with --check instead of written plain.
-# Skipped, because they are not offline: the checks job's zizmor workflow audit (uvx
-# would need network access to fetch it the first time; run it yourself with
-# `uvx zizmor@1.30.1 --offline --persona=regular .github/workflows` once it's cached),
-# and the Databricks project's workspace-only steps (databricks/run.py with no --plan,
-# and databricks/dbt_build.py), which need a workspace and credentials and are not run
-# in CI either — CI checks only databricks/run.py --plan --check, which this runs.
+# dataset: lint, the workflow audit, the generator/DAG tests, the dbt project rebuilt
+# and compared, and the airflow/quality/spark/databricks harnesses run with --check
+# instead of written plain. Skipped, because they are not offline: the Databricks
+# project's workspace-only steps (databricks/run.py with no --plan, and
+# databricks/dbt_build.py), which need a workspace and credentials and are not run in
+# CI either — CI checks only databricks/run.py --plan --check, which this runs.
 verify: data
 	uv run ruff format --check .
 	uv run ruff check .
 	uv run pytest -q
+	uvx zizmor@1.30.1 --offline --persona=regular .github/workflows
 	uv run python scripts/warehouse.py
 	uv run python scripts/measure.py --check
 	uv run python scripts/mutants.py --check

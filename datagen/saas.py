@@ -1,4 +1,4 @@
-"""Seeded synthetic data for one fictional B2B subscription SaaS.
+"""Reproducible generated data for one B2B subscription SaaS business scenario.
 
 Every project in this repository runs on this dataset, so figures line up across
 tools. Nothing in it is real: people, companies and e-mail addresses are generated,

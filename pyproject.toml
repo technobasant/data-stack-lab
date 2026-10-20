@@ -1,7 +1,7 @@
 [project]
 name = "data-stack-lab"
 version = "0.1.0"
-description = "Hands-on data engineering projects, one per tool, on one synthetic SaaS dataset."
+description = "Hands-on data engineering projects, one per tool, on one generated SaaS dataset."
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Basant Bhattarai" }]

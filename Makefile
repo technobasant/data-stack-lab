@@ -1,4 +1,4 @@
-# data-stack-lab — hands-on data engineering projects, one per tool, on one synthetic SaaS dataset.
+# data-stack-lab — hands-on data engineering projects, one per tool, on one generated SaaS dataset.
 #
 #   make setup       uv venv + dependencies
 #   make data        generate the dataset (SCALE=lab, or tiny)

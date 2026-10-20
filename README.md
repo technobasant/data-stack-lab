@@ -4,7 +4,7 @@ Hands-on data engineering projects, one per tool: dbt, Airflow, data quality, Sp
 
 [![ci](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/technobasant/data-stack-lab/actions/workflows/ci.yml)
 
-Every project uses the same synthetic SaaS data, runs with one command, and has its results checked in CI. The Databricks project needs a workspace, so CI checks its prediction and the recorded run instead of re-running it.
+Every project uses the same generated SaaS data, runs with one command, and has its results checked in CI. The Databricks project needs a workspace, so CI checks its prediction and the recorded run instead of re-running it.
 
 ## For architects
 
@@ -214,7 +214,7 @@ From [`results/databricks.json`](results/databricks.json), one run on Databricks
 ## Layout
 
 ```
-datagen/            the seeded generator shared by every project
+datagen/            the generator shared by every project (fixed seed)
 dbt/                the dbt project: staging, snapshots, marts, tests; models/airflow for the Airflow project
 airflow/            the DAGs and the backfill harness
 quality/            the data-quality harness; dbt/models/quality holds the checks

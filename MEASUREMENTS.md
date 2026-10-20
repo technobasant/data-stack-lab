@@ -50,7 +50,7 @@ Runs were made on 2026-10-18 unless stated otherwise.
 | Databricks | Free Edition: Databricks SQL 2026.39 on the serverless Starter Warehouse (2X-Small), serverless Lakeflow pipelines (run on 2026-10-19) |
 
 Only the timings (tier 3) depend on the host. Every tier-1 figure is a count over
-seeded data and is identical on any machine; CI (Ubuntu) reproduces those files byte
+generated data (fixed seed) and is identical on any machine; CI (Ubuntu) reproduces those files byte
 for byte. The tier-2 files were recorded on this host and are not reproduced anywhere.
 
 ## Dataset
@@ -200,7 +200,7 @@ observation, not a benchmark.
 
 ## Limits
 
-- The data is synthetic and the rates above are assumptions. The 15.1% is what this
+- The data is generated and the rates above are assumptions. The 15.1% is what this
   business's churn and plan changes produce, not a constant: more plan changes,
   more error.
 - Invoices fall on the instant the extract is taken, which is why snapshot gaps cost
@@ -352,7 +352,7 @@ Notes on the figures:
   that); verified here from the run's own `quality_state.accepted_daily` table.
 - 29 September is counted as the late defect's consequence, not as a clean day.
 
-**Limits.** Synthetic events with no weekly or seasonal pattern, so the volume and share
+**Limits.** Generated events with no weekly or seasonal pattern, so the volume and share
 bands see an unusually flat baseline and the false-alarm count (0 of 20) is optimistic.
 One defect per day, each applied whole. The harness does not model a person repairing
 and re-releasing a held day.

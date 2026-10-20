@@ -41,7 +41,7 @@ Case study: [basantbhattarai.com.np/work/data-stack-lab](https://basantbhattarai
 
 1,000 accounts on four plans, a year of invoices and 900k product events, including late and duplicate events. Because it is generated, the correct answer is known, so each project can prove its result instead of just running.
 
-[`datagen/saas.py`](datagen/saas.py), seed 7, October 2025 to September 2026: generated in about five seconds, identical on every run, and nothing in it is real.
+[`datagen/saas.py`](datagen/saas.py), seed 7, October 2025 to September 2026: generated in about five seconds, identical on every run.
 
 | Source | Rows | As delivered |
 |---|---:|---|

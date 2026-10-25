@@ -7,7 +7,7 @@ license = "Apache-2.0"
 authors = [{ name = "Basant Bhattarai" }]
 requires-python = ">=3.11"
 dependencies = [
-    "duckdb>=1.5,<2",
+    "duckdb>=1.5,<3",
     "numpy>=2.0",
     "pyarrow>=20",
     "dbt-core>=1.12,<1.13",
@@ -23,7 +23,7 @@ airflow = ["apache-airflow==3.3.2"]
 spark = ["pyspark==4.2.0"]
 # The Databricks project only: `uv sync --group databricks`. Needs a workspace; see
 # databricks/README.md.
-databricks = ["databricks-sdk==0.153.0", "databricks-sql-connector==4.6.0"]
+databricks = ["databricks-sdk==0.156.0", "databricks-sql-connector==4.7.0"]
 
 [tool.uv]
 package = false
